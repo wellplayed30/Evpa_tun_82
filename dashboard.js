@@ -191,10 +191,8 @@ async function fetchRouterData(docId) {
     const result = {};
     if (data.GigabitEthernet1) result.wan = data.GigabitEthernet1;
     if (data.PPTP1) result.vpn = data.PPTP1;
-    result.ports = {};
-    if (data['1']) result.ports.port1 = data['1'];
-    if (data['2']) result.ports.port2 = data['2'];
-    if (data['3']) result.ports.port3 = data['3'];
+    if (data.version) result.version = data.version;
+    if (data.system) result.system = data.system;
     
     displayRouterData(result);
     
@@ -208,8 +206,33 @@ async function fetchRouterData(docId) {
 // Функция отображения данных роутера
 function displayRouterData(data) {
   let html = '<div style="color: var(--success); margin-bottom: 15px;">✅ Данные получены успешно</div>';
-  html += '<table style="width:100%; border-collapse: collapse;">';
-  html += '<tr style="background:#f8fafc;"><th style="padding:10px; text-align:left; border-bottom:2px solid #e2e8f0;">Параметр</th><th style="padding:10px; text-align:left; border-bottom:2px solid #e2e8f0;">Значение</th></tr>';
+  html += '<div style="width:100%;">';
+
+  // Версия прошивки
+  if (data.version) {
+    html += `
+      <div style="background:#f0fdf4; border-radius:12px; padding:12px 16px; margin-bottom:12px;">
+        <span style="font-weight:600;">📦 Версия прошивки:</span>
+        <span>${escapeHtml(data.version.title || '—')} (${escapeHtml(data.version.model || '—')})</span>
+      </div>`;
+  }
+
+  // Системная информация
+  if (data.system) {
+    const s = data.system;
+    const uptimeSec = parseInt(s.uptime) || 0;
+    const d = Math.floor(uptimeSec / 86400);
+    const h = Math.floor((uptimeSec % 86400) / 3600);
+    const m = Math.floor((uptimeSec % 3600) / 60);
+    
+    html += `
+      <div style="background:#f8fafc; border-radius:12px; padding:12px 16px; margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+          <span><span style="font-weight:600;">⏱️ Аптайм:</span> ${d} дн. ${h} ч. ${m} мин.</span>
+          <span><span style="font-weight:600;">🔥 CPU:</span> ${s.cpuload || 0}%</span>
+        </div>
+      </div>`;
+  }
 
   // Интернет (WAN)
   if (data.wan) {
@@ -219,29 +242,17 @@ function displayRouterData(data) {
     const wh = Math.floor((wanUptime % 86400) / 3600);
     const wm = Math.floor((wanUptime % 3600) / 60);
     
-    html += `<tr style="background:#f0fdf4;"><td colspan="2" style="padding:10px; font-weight:600;">🌐 Интернет (ISP)</td></tr>`;
-    html += `<tr><td style="padding:8px; border-bottom:1px solid #e2e8f0;">Статус</td><td style="padding:8px; border-bottom:1px solid #e2e8f0;">${w.link === 'up' ? '🟢 Подключен' : '🔴 Отключен'}</td></tr>`;
-    html += `<tr><td style="padding:8px; border-bottom:1px solid #e2e8f0;">IP-адрес</td><td style="padding:8px; border-bottom:1px solid #e2e8f0;"><strong>${escapeHtml(w.address || '—')}</strong></td></tr>`;
-    html += `<tr><td style="padding:8px; border-bottom:1px solid #e2e8f0;">Маска</td><td style="padding:8px; border-bottom:1px solid #e2e8f0;">${escapeHtml(w.mask || '—')}</td></tr>`;
-    html += `<tr><td style="padding:8px; border-bottom:1px solid #e2e8f0;">Скорость порта</td><td style="padding:8px; border-bottom:1px solid #e2e8f0;">${w.port?.speed || '—'} Mbps ${w.port?.duplex || ''}</td></tr>`;
-    html += `<tr><td style="padding:8px; border-bottom:1px solid #e2e8f0;">Время подключения</td><td style="padding:8px; border-bottom:1px solid #e2e8f0;">${wd} дн. ${wh} ч. ${wm} мин.</td></tr>`;
-  }
-
-  // Ethernet порты
-  if (data.ports && Object.keys(data.ports).length > 0) {
-    html += `<tr style="background:#eff6ff;"><td colspan="2" style="padding:10px; font-weight:600;">🔌 Ethernet порты</td></tr>`;
-    
-    ['port1', 'port2', 'port3'].forEach((portKey, i) => {
-      const port = data.ports[portKey];
-      if (port) {
-        html += `<tr>
-          <td style="padding:8px; border-bottom:1px solid #e2e8f0;">Порт ${i + 1}</td>
-          <td style="padding:8px; border-bottom:1px solid #e2e8f0;">
-            ${port.link === 'up' ? `🟢 Подключен (${port.speed} Mbps ${port.duplex})` : '🔴 Отключен'}
-          </td>
-        </tr>`;
-      }
-    });
+    html += `
+      <div style="background:#f0fdf4; border-radius:12px; padding:12px 16px; margin-bottom:12px;">
+        <div style="font-weight:600; margin-bottom:8px;">🌐 Интернет (ISP)</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+          <span>Статус: ${w.link === 'up' ? '🟢 Подключен' : '🔴 Отключен'}</span>
+          <span>IP: <strong>${escapeHtml(w.address || '—')}</strong></span>
+          <span>Маска: ${escapeHtml(w.mask || '—')}</span>
+          <span>Порт: ${w.port?.speed || '—'} Mbps ${w.port?.duplex || ''}</span>
+          <span>Время: ${wd} дн. ${wh} ч. ${wm} мин.</span>
+        </div>
+      </div>`;
   }
 
   // VPN
@@ -252,14 +263,19 @@ function displayRouterData(data) {
     const vh = Math.floor((vpnUptime % 86400) / 3600);
     const vm = Math.floor((vpnUptime % 3600) / 60);
     
-    html += `<tr style="background:#fef3c7;"><td colspan="2" style="padding:10px; font-weight:600;">🔒 VPN (${escapeHtml(v.description || 'PPTP')})</td></tr>`;
-    html += `<tr><td style="padding:8px; border-bottom:1px solid #e2e8f0;">Статус</td><td style="padding:8px; border-bottom:1px solid #e2e8f0;">${v.link === 'up' ? '🟢 Подключен' : '🔴 Отключен'}</td></tr>`;
-    html += `<tr><td style="padding:8px; border-bottom:1px solid #e2e8f0;">VPN IP</td><td style="padding:8px; border-bottom:1px solid #e2e8f0;"><strong>${escapeHtml(v.address || '—')}</strong></td></tr>`;
-    html += `<tr><td style="padding:8px; border-bottom:1px solid #e2e8f0;">Сервер</td><td style="padding:8px; border-bottom:1px solid #e2e8f0;">${escapeHtml(v['remote-endpoint-address'] || '—')}</td></tr>`;
-    html += `<tr><td style="padding:8px; border-bottom:1px solid #e2e8f0;">Время работы</td><td style="padding:8px; border-bottom:1px solid #e2e8f0;">${vd} дн. ${vh} ч. ${vm} мин.</td></tr>`;
+    html += `
+      <div style="background:#fef3c7; border-radius:12px; padding:12px 16px; margin-bottom:12px;">
+        <div style="font-weight:600; margin-bottom:8px;">🔒 VPN (${escapeHtml(v.description || 'PPTP')})</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+          <span>Статус: ${v.link === 'up' ? '🟢 Подключен' : '🔴 Отключен'}</span>
+          <span>IP: <strong>${escapeHtml(v.address || '—')}</strong></span>
+          <span>Сервер: ${escapeHtml(v['remote-endpoint-address'] || '—')}</span>
+          <span>Время: ${vd} дн. ${vh} ч. ${vm} мин.</span>
+        </div>
+      </div>`;
   }
 
-  html += '</table>';
+  html += '</div>';
   routerContent.innerHTML = html;
 }
 
