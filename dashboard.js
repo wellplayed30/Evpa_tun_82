@@ -6,7 +6,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
 let currentUser = null;
-let editingDocId = null; // ID документа, который редактируем
+let editingDocId = null;
 
 // Элементы формы
 const addBtn = document.getElementById('addBtn');
@@ -77,7 +77,7 @@ saveBtn.addEventListener('click', async () => {
       subscriptionDuration: parseInt(durationField.value),
       domainName: domainNameField.value,
       cost: parseFloat(costField.value),
-      notifiedThreeDays: false // сбрасываем флаг при редактировании
+      notifiedThreeDays: false
     });
     cancelEdit();
   } catch (e) {
@@ -123,6 +123,28 @@ confirmDeleteBtn.addEventListener('click', async () => {
   }
 });
 
+// Функция для обработки клика по ID оборудования
+async function handleEquipmentClick(equipmentId) {
+  try {
+    await navigator.clipboard.writeText(equipmentId);
+  } catch (err) {
+    const textArea = document.createElement('textarea');
+    textArea.value = equipmentId;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-9999px';
+    document.body.appendChild(textArea);
+    textArea.select();
+    try {
+      document.execCommand('copy');
+    } catch (e) {
+      console.error('Не удалось скопировать');
+    }
+    document.body.removeChild(textArea);
+  }
+  
+  window.open('https://payberry.ru/pay/26/114#/', '_blank');
+}
+
 // Загрузка и отображение таблицы
 function loadSubscriptions() {
   const q = query(collection(db, 'subscriptions'), where('userId', '==', currentUser.uid));
@@ -138,20 +160,16 @@ function loadSubscriptions() {
       const endDate = new Date(d.connectionDate.toDate());
       endDate.setMonth(endDate.getMonth() + d.subscriptionDuration);
 
-      // Формируем ссылку для доменного имени
       let domainLink = d.domainName;
       if (d.domainName && !d.domainName.startsWith('http')) {
         domainLink = 'http://' + d.domainName;
       }
 
-      // Ссылка для ID оборудования (Payberry)
-      const payberryUrl = `https://payberry.ru/pay/26/114#/?equipmentId=${encodeURIComponent(d.equipmentId)}`;
-
       const row = document.createElement('tr');
       row.innerHTML = `
         <td>${escapeHtml(d.address)}</td>
         <td>${d.connectionDate.toDate().toLocaleDateString()}</td>
-        <td><a href="${payberryUrl}" target="_blank" title="Оплатить на Payberry">${escapeHtml(d.equipmentId)}</a></td>
+        <td><a href="#" class="payberry-link" data-id="${escapeHtml(d.equipmentId)}" title="Скопировать ID и открыть Payberry">${escapeHtml(d.equipmentId)}</a></td>
         <td>${d.subscriptionDuration} мес.</td>
         <td>${d.domainName ? `<a href="${domainLink}" target="_blank">${escapeHtml(d.domainName)}</a>` : '—'}</td>
         <td>${d.cost ? d.cost.toLocaleString('ru-RU') + ' ₽' : '—'}</td>
@@ -167,7 +185,16 @@ function loadSubscriptions() {
       tbody.appendChild(row);
     });
 
-    // Навешиваем обработчики на кнопки редактирования
+    // Обработчики для Payberry-ссылок
+    document.querySelectorAll('.payberry-link').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const equipmentId = e.target.closest('a').dataset.id;
+        handleEquipmentClick(equipmentId);
+      });
+    });
+
+    // Обработчики для кнопок редактирования
     document.querySelectorAll('.btn-edit').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const docId = e.target.closest('button').dataset.id;
@@ -175,7 +202,7 @@ function loadSubscriptions() {
       });
     });
 
-    // Навешиваем обработчики на кнопки удаления
+    // Обработчики для кнопок удаления
     document.querySelectorAll('.btn-delete').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const docId = e.target.closest('button').dataset.id;
@@ -185,12 +212,7 @@ function loadSubscriptions() {
   });
 }
 
-// Функция редактирования
 function startEdit(docId) {
-  // Ищем данные в Firestore
-  const docRef = doc(db, 'subscriptions', docId);
-  // Используем onSnapshot уже загруженные данные
-  // Проще найти строку и взять данные из кэша
   const q = query(collection(db, 'subscriptions'), where('userId', '==', currentUser.uid));
   onSnapshot(q, snapshot => {
     snapshot.forEach(docSnap => {
@@ -209,21 +231,18 @@ function startEdit(docId) {
         cancelBtn.style.display = 'inline-block';
         formTitle.textContent = '✏️ Редактировать подписку';
         
-        // Скроллим к форме
         document.getElementById('formCard').scrollIntoView({ behavior: 'smooth' });
       }
     });
   }, { includeMetadataChanges: false });
 }
 
-// Функция удаления
 function openDeleteModal(docId) {
   docToDelete = docId;
   deleteMessage.textContent = 'Вы уверены, что хотите удалить эту запись? Это действие нельзя отменить.';
   deleteModal.classList.add('active');
 }
 
-// Защита от XSS
 function escapeHtml(text) {
   const map = {
     '&': '&amp;',
