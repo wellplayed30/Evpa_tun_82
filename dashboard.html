@@ -144,7 +144,7 @@
       white-space: nowrap;
     }
     
-    /* ТАБЛИЦА БЕЗ СКРОЛЛА */
+    /* ТАБЛИЦА */
     .table-wrapper {
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
@@ -254,15 +254,27 @@
         <label>Адрес</label>
         <input type="text" id="address" placeholder="ул. Ленина, 10">
       </div>
+      
       <div class="input-group">
+        <label>Категория</label>
+        <select id="category">
+          <option value="personal">👤 Личные</option>
+          <option value="work">💼 Рабочие</option>
+          <option value="clients">👥 Клиенты</option>
+        </select>
+      </div>
+      
+      <div class="input-group client-only">
         <label>Дата подключения</label>
         <input type="date" id="connectionDate">
       </div>
+      
       <div class="input-group">
         <label>ID оборудования</label>
         <input type="text" id="equipmentId" placeholder="EQ-001">
       </div>
-      <div class="input-group">
+      
+      <div class="input-group client-only">
         <label>Срок подписки</label>
         <select id="duration">
           <option value="1">1 месяц</option>
@@ -271,18 +283,22 @@
           <option value="12">12 месяцев</option>
         </select>
       </div>
+      
       <div class="input-group">
         <label>Доменное имя (KeenDNS)</label>
         <input type="text" id="domainName" placeholder="client.keenetic.pro">
       </div>
-      <div class="input-group">
+      
+      <div class="input-group client-only">
         <label>Стоимость (₽)</label>
         <input type="number" id="cost" placeholder="1500" step="0.01">
       </div>
+      
       <div class="input-group">
         <label>Логин роутера</label>
         <input type="text" id="routerUsername" placeholder="admin">
       </div>
+      
       <div class="input-group">
         <label>Пароль роутера</label>
         <div class="password-wrapper">
@@ -290,40 +306,43 @@
           <button type="button" class="toggle-password" id="togglePassword">👁️</button>
         </div>
       </div>
+      
       <button class="btn-add" id="addBtn">➕ Добавить</button>
       <button class="btn-save" id="saveBtn" style="display: none;">💾 Сохранить</button>
       <button class="btn-cancel" id="cancelBtn" style="display: none;">✖ Отмена</button>
     </div>
   </div>
 
-  <div class="card" style="overflow-x: auto;">
-    <table class="subscription-table">
-      <thead>
-        <tr>
-          <th>Адрес</th>
-          <th>Дата подкл.</th>
-          <th>ID обор.</th>
-          <th>Срок (мес)</th>
-          <th>Домен</th>
-          <th>Стоимость</th>
-          <th>Окончание</th>
-          <th>Роутер</th>
-          <th>Кто добавил</th>
-          <th>Действия</th>
-        </tr>
-      </thead>
-      <tbody id="tableBody">
-        <tr><td colspan="10" class="empty-message">Нет добавленных подписок</td></tr>
-      </tbody>
-    </table>
+  <div class="card">
+    <div class="table-wrapper">
+      <table class="subscription-table">
+        <thead>
+          <tr>
+            <th>Адрес</th>
+            <th>Дата подкл.</th>
+            <th>ID обор.</th>
+            <th>Срок (мес)</th>
+            <th>Домен</th>
+            <th>Стоимость</th>
+            <th>Окончание</th>
+            <th>Роутер</th>
+            <th>Кто добавил</th>
+            <th>Действия</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+          <tr><td colspan="10" class="empty-message">Нет добавленных подписок</td></tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 
   <!-- Модальное окно для удаления -->
   <div class="modal-overlay" id="deleteModal">
     <div class="modal">
       <h3>Удалить подписку?</h3>
-      <p id="deleteMessage">Вы уверены, что хотите удалить эту запись?</p>
-      <div class="modal-btns">
+      <p id="deleteMessage">Вы уверены, что хотите удалить эту запись? Это действие нельзя отменить.</p>
+      <div class="modal-btns" style="display:flex; gap:10px; justify-content:center; margin-top:20px;">
         <button class="btn-cancel" id="cancelDeleteBtn">Отмена</button>
         <button class="btn-add" id="confirmDeleteBtn" style="background: var(--danger); box-shadow: 0 8px 20px rgba(239,68,68,0.3);">Удалить</button>
       </div>
@@ -337,7 +356,7 @@
       <div id="routerContent">
         <p>Загрузка...</p>
       </div>
-      <div class="modal-btns">
+      <div class="modal-btns" style="display:flex; gap:10px; justify-content:center; margin-top:20px;">
         <button class="btn-cancel" id="closeRouterModal">Закрыть</button>
       </div>
     </div>
