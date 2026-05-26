@@ -192,54 +192,104 @@ async function fetchRouterData(docId) {
     }
     
     const cleanDomain = domainName.replace(/^https?:\/\//, '');
+    const auth = btoa(`${routerUsername}:${routerPassword}`);
+    const baseUrl = `https://${cleanDomain}`;
     
-    // Формируем URL с авторизацией для открытия в новой вкладке
-    const apiUrl = `https://${routerUsername}:${encodeURIComponent(routerPassword)}@${cleanDomain}/rci/show/interface`;
+    const result = {};
+    let successCount = 0;
+    let failCount = 0;
     
-    routerContent.innerHTML = `
-      <p style="color: var(--warning); font-size: 1.1em;">📡 Открываем API роутера...</p>
-      <p style="font-size: 0.9em; color: var(--muted);">
-        Если данные не загрузились автоматически, нажмите кнопку ниже.
-      </p>
-      <div style="margin-top: 15px;">
-        <a href="${apiUrl}" target="_blank" style="display: inline-block; padding: 12px 24px; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; text-decoration: none; border-radius: 12px; font-weight: 600;">
-          🔗 Открыть API роутера
-        </a>
-      </div>
-      <p style="margin-top: 15px; font-size: 0.85em; color: var(--muted);">
-        После открытия скопируйте JSON-данные и вставьте ниже.
-      </p>
-      <textarea id="manualJsonInput" placeholder="Вставьте JSON сюда..." style="width:100%; height:150px; margin-top:10px; padding:10px; border:1px solid #ddd; border-radius:8px; font-size:0.85em;"></textarea>
-      <button id="parseJsonBtn" style="margin-top:10px; padding:10px 20px; background: var(--primary); color:white; border:none; border-radius:8px; cursor:pointer;">📊 Показать данные</button>
-    `;
-    
-    // Обработчик для ручного ввода JSON
-    document.getElementById('parseJsonBtn').addEventListener('click', () => {
+    // Функция запроса через прокси
+    async function fetchViaProxy(endpoint) {
+      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(baseUrl + endpoint)}`;
       try {
-        const jsonText = document.getElementById('manualJsonInput').value;
-        const data = JSON.parse(jsonText);
-        
-        // Извлекаем нужные данные
-        const result = {};
-        
-        // Ищем интерфейсы
-        if (data.GigabitEthernet1) result.wan = data.GigabitEthernet1;
-        if (data.PPTP1) result.vpn = data.PPTP1;
-        
-        // Порты
-        result.ports = {};
-        if (data['1']) result.ports.port1 = data['1'];
-        if (data['2']) result.ports.port2 = data['2'];
-        if (data['3']) result.ports.port3 = data['3'];
-        
-        displayRouterData(result);
-      } catch (e) {
-        alert('Ошибка парсинга JSON: ' + e.message);
-      }
-    });
+        const resp = await fetch(proxyUrl, {
+          headers: {
+            'Authorization': `Basic ${auth}`
+          }
+        });
+        if (resp.ok) {
+          return await resp.json();
+        }
+      } catch (e) {}
+      return null;
+    }
     
-    // Пробуем автоматически открыть
-    window.open(apiUrl, '_blank');
+    // Система
+    const sysData = await fetchViaProxy('/rci/show/system');
+    if (sysData) { result.system = sysData; successCount++; } else { failCount++; }
+    
+    // Версия
+    const verData = await fetchViaProxy('/rci/show/version');
+    if (verData) { result.version = verData; successCount++; } else { failCount++; }
+    
+    // Интернет
+    const wanData = await fetchViaProxy('/rci/show/interface/GigabitEthernet1');
+    if (wanData) { result.wan = wanData; successCount++; } else { failCount++; }
+    
+    // VPN
+    const vpnData = await fetchViaProxy('/rci/show/interface/PPTP1');
+    if (vpnData) { result.vpn = vpnData; successCount++; } else { failCount++; }
+    
+    // Порты
+    const portsData = await fetchViaProxy('/rci/show/interface');
+    if (portsData) {
+      result.ports = {};
+      if (portsData['1']) result.ports.port1 = portsData['1'];
+      if (portsData['2']) result.ports.port2 = portsData['2'];
+      if (portsData['3']) result.ports.port3 = portsData['3'];
+      successCount++;
+    } else {
+      failCount++;
+    }
+    
+    if (successCount === 0) {
+      // Пробуем без прокси (для десктопа)
+      routerContent.innerHTML = '<p>⏳ Пробуем прямое подключение...</p>';
+      
+      try {
+        const directResp = await fetch(`${baseUrl}/rci/show/interface`, {
+          headers: { 'Authorization': `Basic ${auth}` },
+          mode: 'no-cors'
+        });
+        
+        if (directResp.ok || directResp.type === 'opaque') {
+          routerContent.innerHTML = `
+            <p style="color: var(--warning);">⚠️ Браузер блокирует прямой запрос</p>
+            <p style="font-size: 0.9em; color: var(--muted);">
+              Откройте API роутера напрямую и скопируйте данные:<br>
+              <a href="${baseUrl}/rci/show/interface" target="_blank" style="color: var(--primary); word-break: break-all;">${baseUrl}/rci/show/interface</a>
+            </p>
+            <textarea id="manualJsonInput" placeholder="Вставьте JSON сюда..." style="width:100%; height:150px; margin-top:10px; padding:10px; border:1px solid #ddd; border-radius:8px; font-size:0.85em;"></textarea>
+            <button id="parseJsonBtn" style="margin-top:10px; padding:12px; background: var(--primary); color:white; border:none; border-radius:8px; cursor:pointer; width:100%;">📊 Показать</button>
+          `;
+          
+          document.getElementById('parseJsonBtn').addEventListener('click', () => {
+            try {
+              const data = JSON.parse(document.getElementById('manualJsonInput').value);
+              const r = {};
+              if (data.GigabitEthernet1) r.wan = data.GigabitEthernet1;
+              if (data.PPTP1) r.vpn = data.PPTP1;
+              r.ports = {};
+              if (data['1']) r.ports.port1 = data['1'];
+              if (data['2']) r.ports.port2 = data['2'];
+              if (data['3']) r.ports.port3 = data['3'];
+              displayRouterData(r);
+            } catch (e) {
+              alert('Ошибка JSON: ' + e.message);
+            }
+          });
+          
+          window.open(`${baseUrl}/rci/show/interface`, '_blank');
+          return;
+        }
+      } catch (e) {}
+      
+      routerContent.innerHTML = '<p style="color: var(--danger);">❌ Не удалось получить данные ни через прокси, ни напрямую.</p>';
+      return;
+    }
+    
+    displayRouterData(result);
     
   } catch (error) {
     routerContent.innerHTML = `
@@ -247,82 +297,6 @@ async function fetchRouterData(docId) {
     `;
   }
 }
-
-// Функция отображения данных роутера
-function displayRouterData(data) {
-  let html = '<div style="color: var(--success); margin-bottom: 15px;">✅ Данные получены успешно</div>';
-  html += '<table style="width:100%; border-collapse: collapse;">';
-  html += '<tr style="background:#f8fafc;"><th style="padding:10px; text-align:left; border-bottom:2px solid #e2e8f0;">Параметр</th><th style="padding:10px; text-align:left; border-bottom:2px solid #e2e8f0;">Значение</th></tr>';
-
-  // Версия прошивки
-  if (data.version && !data.version.error) {
-    html += `<tr><td style="padding:8px; border-bottom:1px solid #e2e8f0;">📦 Версия прошивки</td><td style="padding:8px; border-bottom:1px solid #e2e8f0;"><strong>${escapeHtml(data.version.title || '—')}</strong> (${escapeHtml(data.version.model || '—')})</td></tr>`;
-  }
-
-  // Система
-  if (data.system && !data.system.error) {
-    const s = data.system;
-    const uptimeSec = parseInt(s.uptime) || 0;
-    const d = Math.floor(uptimeSec / 86400);
-    const h = Math.floor((uptimeSec % 86400) / 3600);
-    const m = Math.floor((uptimeSec % 3600) / 60);
-    
-    html += `<tr><td style="padding:8px; border-bottom:1px solid #e2e8f0;">⏱️ Аптайм</td><td style="padding:8px; border-bottom:1px solid #e2e8f0;">${d} дн. ${h} ч. ${m} мин.</td></tr>`;
-    html += `<tr><td style="padding:8px; border-bottom:1px solid #e2e8f0;">🔥 Загрузка CPU</td><td style="padding:8px; border-bottom:1px solid #e2e8f0;">${s.cpuload || 0}%</td></tr>`;
-  }
-
-  // Интернет (WAN)
-  if (data.wan && !data.wan.error) {
-    const w = data.wan;
-    const wanUptime = parseInt(w.uptime) || 0;
-    const wd = Math.floor(wanUptime / 86400);
-    const wh = Math.floor((wanUptime % 86400) / 3600);
-    const wm = Math.floor((wanUptime % 3600) / 60);
-    
-    html += `<tr style="background:#f0fdf4;"><td colspan="2" style="padding:10px; font-weight:600;">🌐 Интернет (ISP)</td></tr>`;
-    html += `<tr><td style="padding:8px; border-bottom:1px solid #e2e8f0;">Статус</td><td style="padding:8px; border-bottom:1px solid #e2e8f0;">${w.link === 'up' ? '🟢 Подключен' : '🔴 Отключен'}</td></tr>`;
-    html += `<tr><td style="padding:8px; border-bottom:1px solid #e2e8f0;">IP-адрес</td><td style="padding:8px; border-bottom:1px solid #e2e8f0;"><strong>${escapeHtml(w.address || '—')}</strong></td></tr>`;
-    html += `<tr><td style="padding:8px; border-bottom:1px solid #e2e8f0;">Маска</td><td style="padding:8px; border-bottom:1px solid #e2e8f0;">${escapeHtml(w.mask || '—')}</td></tr>`;
-    html += `<tr><td style="padding:8px; border-bottom:1px solid #e2e8f0;">Скорость порта</td><td style="padding:8px; border-bottom:1px solid #e2e8f0;">${w.port?.speed || '—'} Mbps ${w.port?.duplex || ''}</td></tr>`;
-    html += `<tr><td style="padding:8px; border-bottom:1px solid #e2e8f0;">Время подключения</td><td style="padding:8px; border-bottom:1px solid #e2e8f0;">${wd} дн. ${wh} ч. ${wm} мин.</td></tr>`;
-  }
-
-  // Ethernet порты
-  if (data.ports && !data.ports.error) {
-    html += `<tr style="background:#eff6ff;"><td colspan="2" style="padding:10px; font-weight:600;">🔌 Ethernet порты</td></tr>`;
-    
-    ['port1', 'port2', 'port3'].forEach((portKey, i) => {
-      const port = data.ports[portKey];
-      if (port) {
-        html += `<tr>
-          <td style="padding:8px; border-bottom:1px solid #e2e8f0;">Порт ${i + 1}</td>
-          <td style="padding:8px; border-bottom:1px solid #e2e8f0;">
-            ${port.link === 'up' ? `🟢 Подключен (${port.speed} Mbps ${port.duplex})` : '🔴 Отключен'}
-          </td>
-        </tr>`;
-      }
-    });
-  }
-
-  // VPN
-  if (data.vpn && !data.vpn.error) {
-    const v = data.vpn;
-    const vpnUptime = parseInt(v.uptime) || 0;
-    const vd = Math.floor(vpnUptime / 86400);
-    const vh = Math.floor((vpnUptime % 86400) / 3600);
-    const vm = Math.floor((vpnUptime % 3600) / 60);
-    
-    html += `<tr style="background:#fef3c7;"><td colspan="2" style="padding:10px; font-weight:600;">🔒 VPN (${escapeHtml(v.description || 'PPTP')})</td></tr>`;
-    html += `<tr><td style="padding:8px; border-bottom:1px solid #e2e8f0;">Статус</td><td style="padding:8px; border-bottom:1px solid #e2e8f0;">${v.link === 'up' ? '🟢 Подключен' : '🔴 Отключен'}</td></tr>`;
-    html += `<tr><td style="padding:8px; border-bottom:1px solid #e2e8f0;">VPN IP</td><td style="padding:8px; border-bottom:1px solid #e2e8f0;"><strong>${escapeHtml(v.address || '—')}</strong></td></tr>`;
-    html += `<tr><td style="padding:8px; border-bottom:1px solid #e2e8f0;">Сервер</td><td style="padding:8px; border-bottom:1px solid #e2e8f0;">${escapeHtml(v['remote-endpoint-address'] || '—')}</td></tr>`;
-    html += `<tr><td style="padding:8px; border-bottom:1px solid #e2e8f0;">Время работы</td><td style="padding:8px; border-bottom:1px solid #e2e8f0;">${vd} дн. ${vh} ч. ${vm} мин.</td></tr>`;
-  }
-
-  html += '</table>';
-  routerContent.innerHTML = html;
-}
-
 // Загрузка и отображение таблицы
 function loadSubscriptions() {
   const q = query(collection(db, 'subscriptions'), where('userId', '==', currentUser.uid));
