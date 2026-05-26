@@ -3,51 +3,222 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Управление подписками</title>
+  <title>Подписки • Панель</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&display=swap" rel="stylesheet">
   <style>
-    body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; }
-    input, select, button { margin: 5px; padding: 8px; font-size: 14px; }
-    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-    th { background: #f2f2f2; }
-    .logout { float: right; }
+    :root {
+      --bg: #f5f7fb;
+      --card-bg: rgba(255, 255, 255, 0.8);
+      --text: #1e293b;
+      --muted: #64748b;
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --radius: 20px;
+      --shadow: 0 20px 40px rgba(0,0,0,0.05), 0 0 0 1px rgba(0,0,0,0.04);
+      --input-bg: rgba(255,255,255,0.9);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #f5f7fb 0%, #eef1f8 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: var(--text);
+      backdrop-filter: blur(10px);
+    }
+    header {
+      max-width: 1000px;
+      margin: 0 auto 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+    h1 {
+      font-weight: 600;
+      font-size: 2rem;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .btn-logout {
+      padding: 12px 24px;
+      border: 1px solid rgba(0,0,0,0.05);
+      border-radius: 14px;
+      background: white;
+      font-weight: 500;
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+    }
+    .btn-logout:hover {
+      background: #f8fafc;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+    }
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 28px 30px;
+      max-width: 1000px;
+      margin: 0 auto 30px;
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 15px;
+      align-items: end;
+    }
+    .input-group {
+      position: relative;
+    }
+    .input-group input, .input-group select {
+      width: 100%;
+      padding: 14px 16px;
+      font-size: 0.95rem;
+      background: var(--input-bg);
+      border: 1.5px solid rgba(0,0,0,0.06);
+      border-radius: 14px;
+      outline: none;
+      transition: all 0.25s;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+    }
+    .input-group input:focus, .input-group select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(99,102,241,0.15);
+    }
+    .input-group label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--muted);
+      letter-spacing: -0.2px;
+    }
+    .btn-add {
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      color: white;
+      border: none;
+      padding: 14px 24px;
+      border-radius: 14px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.25s;
+      box-shadow: 0 8px 20px rgba(99,102,241,0.3);
+      white-space: nowrap;
+      height: fit-content;
+      align-self: end;
+    }
+    .btn-add:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 24px rgba(99,102,241,0.4);
+    }
+    .subscription-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      margin-top: 10px;
+    }
+    .subscription-table th {
+      text-align: left;
+      padding: 14px 16px;
+      font-weight: 500;
+      font-size: 0.85rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid rgba(0,0,0,0.05);
+    }
+    .subscription-table td {
+      padding: 14px 16px;
+      font-size: 0.95rem;
+      border-bottom: 1px solid rgba(0,0,0,0.03);
+    }
+    .subscription-table tbody tr {
+      transition: background 0.2s;
+    }
+    .subscription-table tbody tr:hover {
+      background: rgba(99,102,241,0.04);
+    }
+    .empty-message {
+      text-align: center;
+      color: var(--muted);
+      padding: 40px;
+    }
+    @media (max-width: 600px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .subscription-table { font-size: 0.8rem; }
+    }
   </style>
 </head>
 <body>
-  <button class="logout" id="logoutBtn">Выйти</button>
-  <h1>Мои подписки</h1>
+  <header>
+    <h1>📋 Мои подписки</h1>
+    <button class="btn-logout" id="logoutBtn">Выйти</button>
+  </header>
 
-  <div>
-    <h2>Добавить запись</h2>
-    <input type="text" id="address" placeholder="Адрес">
-    <input type="date" id="connectionDate">
-    <input type="text" id="equipmentId" placeholder="ID оборудования">
-    <select id="duration">
-      <option value="1">1 месяц</option>
-      <option value="3">3 месяца</option>
-      <option value="6">6 месяцев</option>
-      <option value="12">12 месяцев</option>
-    </select>
-    <input type="text" id="domainName" placeholder="Доменное имя">
-    <input type="number" id="cost" placeholder="Стоимость" step="0.01">
-    <button id="addBtn">Добавить</button>
+  <div class="card">
+    <div class="form-grid">
+      <div class="input-group">
+        <label>Адрес</label>
+        <input type="text" id="address" placeholder="ул. Ленина, 10">
+      </div>
+      <div class="input-group">
+        <label>Дата подключения</label>
+        <input type="date" id="connectionDate">
+      </div>
+      <div class="input-group">
+        <label>ID оборудования</label>
+        <input type="text" id="equipmentId" placeholder="EQ-001">
+      </div>
+      <div class="input-group">
+        <label>Срок подписки</label>
+        <select id="duration">
+          <option value="1">1 месяц</option>
+          <option value="3">3 месяца</option>
+          <option value="6">6 месяцев</option>
+          <option value="12">12 месяцев</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label>Доменное имя</label>
+        <input type="text" id="domainName" placeholder="client.example.com">
+      </div>
+      <div class="input-group">
+        <label>Стоимость (₽)</label>
+        <input type="number" id="cost" placeholder="1500" step="0.01">
+      </div>
+      <button class="btn-add" id="addBtn">➕ Добавить</button>
+    </div>
   </div>
 
-  <h2>Список</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>Адрес</th>
-        <th>Дата подключения</th>
-        <th>ID оборудования</th>
-        <th>Срок (мес.)</th>
-        <th>Домен</th>
-        <th>Стоимость</th>
-        <th>Окончание</th>
-      </tr>
-    </thead>
-    <tbody id="tableBody"></tbody>
-  </table>
+  <div class="card" style="overflow-x: auto;">
+    <table class="subscription-table">
+      <thead>
+        <tr>
+          <th>Адрес</th>
+          <th>Дата подкл.</th>
+          <th>ID обор.</th>
+          <th>Срок (мес)</th>
+          <th>Домен</th>
+          <th>Стоимость</th>
+          <th>Окончание</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody">
+        <tr><td colspan="7" class="empty-message">Нет добавленных подписок</td></tr>
+      </tbody>
+    </table>
+  </div>
 
   <script type="module" src="dashboard.js"></script>
 </body>
