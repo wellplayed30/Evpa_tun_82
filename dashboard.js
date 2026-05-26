@@ -177,18 +177,174 @@ async function fetchRouterData(docId) {
   routerModal.classList.add('active');
   
   try {
-    const response = await fetch(`${WORKER_URL}/?router=${docId}`);
-    const data = await response.json();
+    // Получаем данные документа из Firestore
+    const { doc: docRef, getDoc } = await import("https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js");
     
-    if (data.error) {
-      routerContent.innerHTML = `
-        <div style="color: var(--danger); padding: 20px;">
-          <strong>❌ Ошибка:</strong> ${escapeHtml(data.error)}
-        </div>
-      `;
+    const docSnap = await getDoc(doc(db, 'subscriptions', docId));
+    
+    if (!docSnap.exists()) {
+      routerContent.innerHTML = '<p style="color: var(--danger);">❌ Запись не найдена</p>';
       return;
     }
     
+    const d = docSnap.data();
+    const domainName = d.domainName || '';
+    const routerUsername = d.routerUsername || '';
+    const routerPassword = d.routerPassword || '';
+    
+    if (!domainName || !routerUsername || !routerPassword) {
+      routerContent.innerHTML = '<p style="color: var(--danger);">❌ Не заполнены данные роутера</p>';
+      return;
+    }
+    
+    const cleanDomain = domainName.replace(/^https?:\/\//, '');
+    
+    // Пробуем HTTPS напрямую из браузера
+    const httpsUrl = `https://${cleanDomain}/rci/show/interface`;
+    
+    try {
+      const response = await fetch(httpsUrl, {
+        headers: {
+          'Authorization': 'Basic ' + btoa(`${routerUsername}:${routerPassword}`),
+          'Accept': 'application/json'
+        },
+        mode: 'cors'
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        displayRouterData(data);
+        return;
+      }
+    } catch (httpsError) {
+      console.log('HTTPS не сработал:', httpsError.message);
+    }
+    
+    // Пробуем HTTP
+    const httpUrl = `http://${cleanDomain}/rci/show/interface`;
+    
+    try {
+      const response = await fetch(httpUrl, {
+        headers: {
+          'Authorization': 'Basic ' + btoa(`${routerUsername}:${routerPassword}`),
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        displayRouterData(data);
+        return;
+      } else {
+        routerContent.innerHTML = `
+          <p style="color: var(--danger);">❌ Ошибка роутера: ${response.status}</p>
+          <p style="font-size: 0.9em; color: var(--muted);">
+            Проверьте логин и пароль в настройках записи.
+            <br><br>
+            <a href="http://${cleanDomain}/rci/show/interface" target="_blank" style="color: var(--primary);">
+              🔗 Открыть API роутера напрямую
+            </a>
+          </p>
+        `;
+      }
+    } catch (httpError) {
+      routerContent.innerHTML = `
+        <p style="color: var(--danger);">❌ Не удалось подключиться к роутеру</p>
+        <p style="font-size: 0.9em; color: var(--muted);">
+          HTTPS: ${httpsError?.message || '—'}<br>
+          HTTP: ${httpError.message}<br>
+          Домен: ${cleanDomain}<br><br>
+          <a href="http://${cleanDomain}/rci/show/interface" target="_blank" style="color: var(--primary);">
+            🔗 Открыть API роутера напрямую
+          </a>
+        </p>
+      `;
+    }
+    
+  } catch (error) {
+    routerContent.innerHTML = `
+      <p style="color: var(--danger);">❌ Ошибка: ${escapeHtml(error.message)}</p>
+    `;
+  }
+}
+
+function displayRouterData(data) {
+  let html = '<div style="color: var(--success); margin-bottom: 15px;">✅ Данные получены успешно</div>';
+  html += '<table style="width:100%; border-collapse: collapse;">';
+  html += '<tr style="background:#f8fafc;"><th style="padding:10px; text-align:left; border-bottom:2px solid #e2e8f0;">Интерфейс</th><th style="padding:10px; text-align:left; border-bottom:2px solid #e2e8f0;">Статус</th><th style="padding:10px; text-align:left; border-bottom:2px solid #e2e8f0;">Детали</th></tr>';
+  
+  // Порты
+  if (data['1']) {
+    const port1 = data['1'];
+    html += `<tr>
+      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">🔌 Порт 1</td>
+      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">${port1.link === 'up' ? '🟢 В сети' : '🔴 Отключен'}</td>
+      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">${port1.link === 'up' ? `Скорость: ${port1.speed} Mbps` : ''}</td>
+    </tr>`;
+  }
+  
+  if (data['2']) {
+    const port2 = data['2'];
+    html += `<tr>
+      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">🔌 Порт 2</td>
+      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">${port2.link === 'up' ? '🟢 В сети' : '🔴 Отключен'}</td>
+      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">${port2.link === 'up' ? `Скорость: ${port2.speed} Mbps` : ''}</td>
+    </tr>`;
+  }
+  
+  if (data['3']) {
+    const port3 = data['3'];
+    html += `<tr>
+      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">🔌 Порт 3</td>
+      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">${port3.link === 'up' ? '🟢 В сети' : '🔴 Отключен'}</td>
+      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">${port3.link === 'up' ? `Скорость: ${port3.speed} Mbps` : ''}</td>
+    </tr>`;
+  }
+  
+  // Интернет (ISP)
+  if (data['GigabitEthernet1']) {
+    const isp = data['GigabitEthernet1'];
+    html += `<tr>
+      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">🌐 Интернет (ISP)</td>
+      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">${isp.link === 'up' ? '🟢 Подключен' : '🔴 Нет связи'}</td>
+      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">${isp.link === 'up' ? `IP: ${isp.address || '—'}` : ''}</td>
+    </tr>`;
+  }
+  
+  // Wi-Fi 2.4 ГГц
+  if (data['WifiMaster0']) {
+    const wifi24 = data['WifiMaster0'];
+    html += `<tr>
+      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">📶 Wi-Fi 2.4 ГГц</td>
+      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">🟢 Включен</td>
+      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">Канал: ${wifi24.channel || '—'}, t°: ${wifi24.temperature || '—'}°C</td>
+    </tr>`;
+  }
+  
+  // Wi-Fi 5 ГГц
+  if (data['WifiMaster1']) {
+    const wifi5 = data['WifiMaster1'];
+    html += `<tr>
+      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">📶 Wi-Fi 5 ГГц</td>
+      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">🟢 Включен</td>
+      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">Канал: ${wifi5.channel || '—'}, t°: ${wifi5.temperature || '—'}°C</td>
+    </tr>`;
+  }
+  
+  // VPN
+  if (data['PPTP1']) {
+    const vpn = data['PPTP1'];
+    html += `<tr>
+      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">🔒 VPN (${vpn.description || 'PPTP'})</td>
+      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">${vpn.link === 'up' ? '🟢 Подключен' : '🔴 Отключен'}</td>
+      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">${vpn.link === 'up' ? `IP: ${vpn.address || '—'}` : ''}</td>
+    </tr>`;
+  }
+  
+  html += '</table>';
+  
+  routerContent.innerHTML = html;
+}    
     // Формируем красивую таблицу
     let html = '<div style="color: var(--success); margin-bottom: 15px;">✅ Данные получены успешно</div>';
     html += '<table style="width:100%; border-collapse: collapse;">';
