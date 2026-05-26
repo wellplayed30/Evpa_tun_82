@@ -176,22 +176,61 @@ async function fetchRouterData(docId) {
   routerModal.classList.add('active');
   
   try {
-    const response = await fetch(`${WORKER_URL}/?router=${docId}`);
-    const data = await response.json();
+    const docSnap = await getDoc(doc(db, 'subscriptions', docId));
     
-    if (data.error) {
+    if (!docSnap.exists()) {
+      routerContent.innerHTML = '<p style="color: var(--danger);">❌ Запись не найдена</p>';
+      return;
+    }
+    
+    const d = docSnap.data();
+    const domainName = d.domainName || '';
+    const routerUsername = d.routerUsername || '';
+    const routerPassword = d.routerPassword || '';
+    
+    if (!domainName || !routerUsername || !routerPassword) {
+      routerContent.innerHTML = '<p style="color: var(--danger);">❌ Не заполнены данные роутера</p>';
+      return;
+    }
+    
+    const cleanDomain = domainName.replace(/^https?:\/\//, '');
+    const auth = btoa(`${routerUsername}:${routerPassword}`);
+    
+    // Открываем API в новой вкладке
+    const apiUrl = `https://${cleanDomain}/rci/show/interface`;
+    const newWindow = window.open(apiUrl, '_blank');
+    
+    if (!newWindow) {
       routerContent.innerHTML = `
-        <p style="color: var(--danger);">❌ Ошибка: ${escapeHtml(data.error)}</p>
-        ${data.url ? `<p style="font-size: 0.9em; color: var(--muted);">URL: ${escapeHtml(data.url)}</p>` : ''}
+        <p style="color: var(--warning);">⚠️ Браузер заблокировал всплывающее окно</p>
+        <p style="font-size: 0.9em; color: var(--muted);">
+          <a href="${apiUrl}" target="_blank" style="color: var(--primary);">
+            🔗 Нажмите здесь, чтобы открыть API роутера
+          </a>
+        </p>
       `;
       return;
     }
     
-    displayRouterData(data);
+    // Ждём загрузки и получаем данные
+    setTimeout(() => {
+      try {
+        const routerData = JSON.parse(newWindow.document.body.textContent);
+        displayRouterData(routerData);
+        newWindow.close();
+      } catch (e) {
+        routerContent.innerHTML = `
+          <p style="color: var(--warning);">⚠️ Не удалось автоматически получить данные</p>
+          <p style="font-size: 0.9em; color: var(--muted);">
+            API роутера открыт в новой вкладке. Скопируйте данные оттуда.
+          </p>
+        `;
+      }
+    }, 2000);
     
   } catch (error) {
     routerContent.innerHTML = `
-      <p style="color: var(--danger);">❌ Ошибка соединения: ${escapeHtml(error.message)}</p>
+      <p style="color: var(--danger);">❌ Ошибка: ${escapeHtml(error.message)}</p>
     `;
   }
 }
