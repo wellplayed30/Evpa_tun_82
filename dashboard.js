@@ -5,6 +5,9 @@ import {
   query, where, onSnapshot, serverTimestamp 
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
+// URL Cloudflare Worker для запросов к роутеру
+const WORKER_URL = 'https://router-bridge.babichevanya.workers.dev';
+
 let currentUser = null;
 let editingDocId = null;
 
@@ -21,13 +24,19 @@ const equipmentIdField = document.getElementById('equipmentId');
 const durationField = document.getElementById('duration');
 const domainNameField = document.getElementById('domainName');
 const costField = document.getElementById('cost');
+const routerUsernameField = document.getElementById('routerUsername');
+const routerPasswordField = document.getElementById('routerPassword');
 
 // Модальное окно удаления
 const deleteModal = document.getElementById('deleteModal');
 const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
 const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
-const deleteMessage = document.getElementById('deleteMessage');
 let docToDelete = null;
+
+// Модальное окно роутера
+const routerModal = document.getElementById('routerModal');
+const routerContent = document.getElementById('routerContent');
+const closeRouterModal = document.getElementById('closeRouterModal');
 
 // Авторизация
 onAuthStateChanged(auth, user => {
@@ -42,6 +51,12 @@ onAuthStateChanged(auth, user => {
 // Выход
 document.getElementById('logoutBtn').addEventListener('click', () => signOut(auth));
 
+// Показать/скрыть пароль
+document.getElementById('togglePassword').addEventListener('click', () => {
+  const type = routerPasswordField.type === 'password' ? 'text' : 'password';
+  routerPasswordField.type = type;
+});
+
 // Добавление записи
 addBtn.addEventListener('click', async () => {
   if (!currentUser) return;
@@ -54,6 +69,8 @@ addBtn.addEventListener('click', async () => {
     subscriptionDuration: parseInt(durationField.value),
     domainName: domainNameField.value,
     cost: parseFloat(costField.value),
+    routerUsername: routerUsernameField.value,
+    routerPassword: routerPasswordField.value,
     notifiedThreeDays: false,
     createdAt: serverTimestamp()
   };
@@ -77,6 +94,8 @@ saveBtn.addEventListener('click', async () => {
       subscriptionDuration: parseInt(durationField.value),
       domainName: domainNameField.value,
       cost: parseFloat(costField.value),
+      routerUsername: routerUsernameField.value,
+      routerPassword: routerPasswordField.value,
       notifiedThreeDays: false
     });
     cancelEdit();
@@ -104,6 +123,8 @@ function clearForm() {
   durationField.value = '1';
   domainNameField.value = '';
   costField.value = '';
+  routerUsernameField.value = '';
+  routerPasswordField.value = '';
 }
 
 // Модальное окно удаления
@@ -121,6 +142,11 @@ confirmDeleteBtn.addEventListener('click', async () => {
   } catch (e) {
     alert('Ошибка удаления: ' + e.message);
   }
+});
+
+// Модальное окно роутера
+closeRouterModal.addEventListener('click', () => {
+  routerModal.classList.remove('active');
 });
 
 // Функция для обработки клика по ID оборудования
@@ -145,6 +171,40 @@ async function handleEquipmentClick(equipmentId) {
   window.open('https://payberry.ru/pay/26/114#/', '_blank');
 }
 
+// Функция запроса данных с роутера
+async function fetchRouterData(docId) {
+  routerContent.innerHTML = '<p>⏳ Загрузка данных с роутера...</p>';
+  routerModal.classList.add('active');
+  
+  try {
+    const response = await fetch(`${WORKER_URL}/?router=${docId}`);
+    const data = await response.json();
+    
+    if (data.error) {
+      routerContent.innerHTML = `
+        <div style="color: var(--danger); padding: 20px;">
+          <strong>❌ Ошибка:</strong> ${escapeHtml(data.error)}
+          ${data.details ? `<br><small>${escapeHtml(data.details)}</small>` : ''}
+          ${data.url ? `<br><small>URL: ${escapeHtml(data.url)}</small>` : ''}
+        </div>
+      `;
+      return;
+    }
+    
+    routerContent.innerHTML = `
+      <div style="color: var(--success); margin-bottom: 10px;">✅ Данные получены успешно</div>
+      <div class="router-data">${escapeHtml(JSON.stringify(data, null, 2))}</div>
+    `;
+    
+  } catch (error) {
+    routerContent.innerHTML = `
+      <div style="color: var(--danger); padding: 20px;">
+        <strong>❌ Ошибка соединения:</strong> ${escapeHtml(error.message)}
+      </div>
+    `;
+  }
+}
+
 // Загрузка и отображение таблицы
 function loadSubscriptions() {
   const q = query(collection(db, 'subscriptions'), where('userId', '==', currentUser.uid));
@@ -152,7 +212,7 @@ function loadSubscriptions() {
     const tbody = document.getElementById('tableBody');
     tbody.innerHTML = '';
     if (snapshot.empty) {
-      tbody.innerHTML = '<tr><td colspan="9" class="empty-message">Нет добавленных подписок</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="10" class="empty-message">Нет добавленных подписок</td></tr>';
       return;
     }
     snapshot.forEach(docSnap => {
@@ -174,9 +234,15 @@ function loadSubscriptions() {
         <td>${d.domainName ? `<a href="${domainLink}" target="_blank">${escapeHtml(d.domainName)}</a>` : '—'}</td>
         <td>${d.cost ? d.cost.toLocaleString('ru-RU') + ' ₽' : '—'}</td>
         <td>${endDate.toLocaleDateString()}</td>
+        <td>
+          ${d.routerUsername ? `<span class="created-by">🔑 ${escapeHtml(d.routerUsername)}</span>` : '—'}
+          ${d.routerPassword ? '<span class="created-by">🔒 ••••••••</span>' : ''}
+        </td>
         <td><span class="created-by">${escapeHtml(d.userEmail || '—')}</span></td>
         <td>
           <div class="action-btns">
+            ${d.domainName && d.routerUsername && d.routerPassword ? 
+              `<button class="btn-icon btn-router" data-id="${docSnap.id}" title="Данные роутера">📡</button>` : ''}
             <button class="btn-icon btn-edit" data-id="${docSnap.id}" title="Редактировать">✏️</button>
             <button class="btn-icon btn-delete" data-id="${docSnap.id}" title="Удалить">🗑️</button>
           </div>
@@ -191,6 +257,14 @@ function loadSubscriptions() {
         e.preventDefault();
         const equipmentId = e.target.closest('a').dataset.id;
         handleEquipmentClick(equipmentId);
+      });
+    });
+
+    // Обработчики для кнопок роутера
+    document.querySelectorAll('.btn-router').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const docId = e.target.closest('button').dataset.id;
+        fetchRouterData(docId);
       });
     });
 
@@ -225,6 +299,8 @@ function startEdit(docId) {
         durationField.value = d.subscriptionDuration || 1;
         domainNameField.value = d.domainName || '';
         costField.value = d.cost || '';
+        routerUsernameField.value = d.routerUsername || '';
+        routerPasswordField.value = d.routerPassword || '';
         
         addBtn.style.display = 'none';
         saveBtn.style.display = 'inline-block';
@@ -239,7 +315,6 @@ function startEdit(docId) {
 
 function openDeleteModal(docId) {
   docToDelete = docId;
-  deleteMessage.textContent = 'Вы уверены, что хотите удалить эту запись? Это действие нельзя отменить.';
   deleteModal.classList.add('active');
 }
 

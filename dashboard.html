@@ -124,6 +124,23 @@
       color: var(--muted);
       letter-spacing: -0.2px;
     }
+    .password-wrapper {
+      position: relative;
+    }
+    .password-wrapper input {
+      padding-right: 40px;
+    }
+    .toggle-password {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 1.2em;
+      padding: 4px;
+    }
     .btn-add, .btn-save {
       background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
       color: white;
@@ -215,6 +232,7 @@
     }
     .btn-edit { color: var(--primary); }
     .btn-delete { color: var(--danger); }
+    .btn-router { color: var(--success); }
     .empty-message {
       text-align: center;
       color: var(--muted);
@@ -241,13 +259,24 @@
       background: white;
       border-radius: var(--radius);
       padding: 30px;
-      max-width: 400px;
+      max-width: 500px;
       width: 90%;
       box-shadow: 0 40px 60px rgba(0,0,0,0.15);
-      text-align: center;
+      max-height: 80vh;
+      overflow-y: auto;
     }
     .modal h3 { margin-bottom: 15px; }
     .modal-btns { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
+    .router-data {
+      background: #f8fafc;
+      border-radius: 12px;
+      padding: 16px;
+      margin: 10px 0;
+      font-family: monospace;
+      font-size: 0.9rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
     @media (max-width: 600px) {
       .form-grid { grid-template-columns: 1fr; }
       .subscription-table { font-size: 0.8rem; }
@@ -291,12 +320,23 @@
         </select>
       </div>
       <div class="input-group">
-        <label>Доменное имя</label>
-        <input type="text" id="domainName" placeholder="client.example.com">
+        <label>Доменное имя (KeenDNS)</label>
+        <input type="text" id="domainName" placeholder="client.keenetic.pro">
       </div>
       <div class="input-group">
         <label>Стоимость (₽)</label>
         <input type="number" id="cost" placeholder="1500" step="0.01">
+      </div>
+      <div class="input-group">
+        <label>Логин роутера</label>
+        <input type="text" id="routerUsername" placeholder="admin">
+      </div>
+      <div class="input-group">
+        <label>Пароль роутера</label>
+        <div class="password-wrapper">
+          <input type="password" id="routerPassword" placeholder="••••••••">
+          <button type="button" class="toggle-password" id="togglePassword">👁️</button>
+        </div>
       </div>
       <button class="btn-add" id="addBtn">➕ Добавить</button>
       <button class="btn-save" id="saveBtn" style="display: none;">💾 Сохранить</button>
@@ -315,12 +355,13 @@
           <th>Домен</th>
           <th>Стоимость</th>
           <th>Окончание</th>
+          <th>Роутер</th>
           <th>Кто добавил</th>
           <th>Действия</th>
         </tr>
       </thead>
       <tbody id="tableBody">
-        <tr><td colspan="9" class="empty-message">Нет добавленных подписок</td></tr>
+        <tr><td colspan="10" class="empty-message">Нет добавленных подписок</td></tr>
       </tbody>
     </table>
   </div>
@@ -333,6 +374,19 @@
       <div class="modal-btns">
         <button class="btn-cancel" id="cancelDeleteBtn">Отмена</button>
         <button class="btn-add" id="confirmDeleteBtn" style="background: var(--danger); box-shadow: 0 8px 20px rgba(239,68,68,0.3);">Удалить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модальное окно для данных роутера -->
+  <div class="modal-overlay" id="routerModal">
+    <div class="modal">
+      <h3>📡 Данные с роутера</h3>
+      <div id="routerContent">
+        <p>Загрузка...</p>
+      </div>
+      <div class="modal-btns">
+        <button class="btn-cancel" id="closeRouterModal">Закрыть</button>
       </div>
     </div>
   </div>
