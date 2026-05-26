@@ -211,7 +211,7 @@ function displayRouterData(data) {
   if (data.version) {
     html += `
       <div style="background:#f0fdf4; border-radius:10px; padding:10px 14px; margin-bottom:10px; font-size:0.9rem;">
-        <strong>📦 Версия:</strong> ${escapeHtml(data.version.title || '—')} (${escapeHtml(data.version.model || '—')})
+        <strong>📦 Версия:</strong> ${escapeHtml(data.version.title || '—')} — ${escapeHtml(data.version.model || '—')}
       </div>`;
   }
 
@@ -240,11 +240,11 @@ function displayRouterData(data) {
     
     html += `
       <div style="background:#eff6ff; border-radius:10px; padding:10px 14px; margin-bottom:10px; font-size:0.9rem;">
-        <div style="font-weight:600; margin-bottom:6px;">🌐 Интернет (ISP)</div>
+        <div style="font-weight:600; margin-bottom:6px;">🌐 Интернет (${escapeHtml(w.description || 'ISP')})</div>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
           <span>🟢 Подключен</span>
           <span>IP: <strong>${escapeHtml(w.address || '—')}</strong></span>
-          <span>Порт: ${w.port?.speed || '—'} Mbps</span>
+          <span>Порт: ${w.port?.speed || '—'} Mbps ${w.port?.duplex || ''}</span>
           <span>Время: ${wd} дн. ${wh} ч. ${wm} мин.</span>
         </div>
       </div>`;
@@ -276,7 +276,6 @@ function displayRouterData(data) {
 
   routerContent.innerHTML = html;
 }
-
 // Загрузка и отображение таблицы
 function loadSubscriptions() {
   const q = query(collection(db, 'subscriptions'), where('userId', '==', currentUser.uid));
