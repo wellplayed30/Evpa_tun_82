@@ -15,6 +15,10 @@
       --muted: #64748b;
       --primary: #6366f1;
       --primary-hover: #4f46e5;
+      --danger: #ef4444;
+      --danger-hover: #dc2626;
+      --warning: #f59e0b;
+      --success: #10b981;
       --radius: 20px;
       --shadow: 0 20px 40px rgba(0,0,0,0.05), 0 0 0 1px rgba(0,0,0,0.04);
       --input-bg: rgba(255,255,255,0.9);
@@ -26,10 +30,9 @@
       min-height: 100vh;
       padding: 20px;
       color: var(--text);
-      backdrop-filter: blur(10px);
     }
     header {
-      max-width: 1000px;
+      max-width: 1200px;
       margin: 0 auto 30px;
       display: flex;
       justify-content: space-between;
@@ -46,10 +49,28 @@
       -webkit-text-fill-color: transparent;
       background-clip: text;
     }
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+    .user-badge {
+      background: rgba(255,255,255,0.9);
+      padding: 8px 16px;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--text);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
     .btn-logout {
-      padding: 12px 24px;
+      padding: 10px 20px;
       border: 1px solid rgba(0,0,0,0.05);
-      border-radius: 14px;
+      border-radius: 12px;
       background: white;
       font-weight: 500;
       color: var(--text);
@@ -68,7 +89,7 @@
       border-radius: var(--radius);
       box-shadow: var(--shadow);
       padding: 28px 30px;
-      max-width: 1000px;
+      max-width: 1200px;
       margin: 0 auto 30px;
     }
     .form-grid {
@@ -103,7 +124,7 @@
       color: var(--muted);
       letter-spacing: -0.2px;
     }
-    .btn-add {
+    .btn-add, .btn-save {
       background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
       color: white;
       border: none;
@@ -118,9 +139,26 @@
       height: fit-content;
       align-self: end;
     }
-    .btn-add:hover {
+    .btn-add:hover, .btn-save:hover {
       transform: translateY(-1px);
       box-shadow: 0 12px 24px rgba(99,102,241,0.4);
+    }
+    .btn-cancel {
+      background: white;
+      color: var(--text);
+      border: 1px solid rgba(0,0,0,0.05);
+      padding: 14px 24px;
+      border-radius: 14px;
+      font-weight: 500;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+      height: fit-content;
+      align-self: end;
+    }
+    .btn-cancel:hover {
+      background: #f1f5f9;
     }
     .subscription-table {
       width: 100%;
@@ -149,11 +187,67 @@
     .subscription-table tbody tr:hover {
       background: rgba(99,102,241,0.04);
     }
+    .subscription-table a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+    .subscription-table a:hover {
+      color: var(--primary-hover);
+      text-decoration: underline;
+    }
+    .action-btns {
+      display: flex;
+      gap: 8px;
+    }
+    .btn-icon {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 1.2rem;
+      padding: 4px 8px;
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+    .btn-icon:hover {
+      background: rgba(0,0,0,0.05);
+    }
+    .btn-edit { color: var(--primary); }
+    .btn-delete { color: var(--danger); }
     .empty-message {
       text-align: center;
       color: var(--muted);
       padding: 40px;
     }
+    .created-by {
+      font-size: 0.8rem;
+      color: var(--muted);
+      display: block;
+    }
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.3);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal {
+      background: white;
+      border-radius: var(--radius);
+      padding: 30px;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 40px 60px rgba(0,0,0,0.15);
+      text-align: center;
+    }
+    .modal h3 { margin-bottom: 15px; }
+    .modal-btns { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
     @media (max-width: 600px) {
       .form-grid { grid-template-columns: 1fr; }
       .subscription-table { font-size: 0.8rem; }
@@ -163,10 +257,17 @@
 <body>
   <header>
     <h1>📋 Мои подписки</h1>
-    <button class="btn-logout" id="logoutBtn">Выйти</button>
+    <div class="user-info">
+      <div class="user-badge">
+        <span>👤</span>
+        <span id="userEmail"></span>
+      </div>
+      <button class="btn-logout" id="logoutBtn">Выйти</button>
+    </div>
   </header>
 
-  <div class="card">
+  <div class="card" id="formCard">
+    <h3 id="formTitle" style="margin-bottom: 18px;">Добавить новую подписку</h3>
     <div class="form-grid">
       <div class="input-group">
         <label>Адрес</label>
@@ -198,6 +299,8 @@
         <input type="number" id="cost" placeholder="1500" step="0.01">
       </div>
       <button class="btn-add" id="addBtn">➕ Добавить</button>
+      <button class="btn-save" id="saveBtn" style="display: none;">💾 Сохранить</button>
+      <button class="btn-cancel" id="cancelBtn" style="display: none;">✖ Отмена</button>
     </div>
   </div>
 
@@ -212,12 +315,26 @@
           <th>Домен</th>
           <th>Стоимость</th>
           <th>Окончание</th>
+          <th>Кто добавил</th>
+          <th>Действия</th>
         </tr>
       </thead>
       <tbody id="tableBody">
-        <tr><td colspan="7" class="empty-message">Нет добавленных подписок</td></tr>
+        <tr><td colspan="9" class="empty-message">Нет добавленных подписок</td></tr>
       </tbody>
     </table>
+  </div>
+
+  <!-- Модальное окно для удаления -->
+  <div class="modal-overlay" id="deleteModal">
+    <div class="modal">
+      <h3>Удалить подписку?</h3>
+      <p id="deleteMessage">Вы уверены, что хотите удалить эту запись?</p>
+      <div class="modal-btns">
+        <button class="btn-cancel" id="cancelDeleteBtn">Отмена</button>
+        <button class="btn-add" id="confirmDeleteBtn" style="background: var(--danger); box-shadow: 0 8px 20px rgba(239,68,68,0.3);">Удалить</button>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="dashboard.js"></script>
