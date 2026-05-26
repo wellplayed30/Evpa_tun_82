@@ -5,8 +5,6 @@ import {
   query, where, onSnapshot, serverTimestamp 
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-const WORKER_URL = 'https://router-bridge.babichevanya.workers.dev';
-
 let currentUser = null;
 let editingDocId = null;
 
@@ -170,28 +168,105 @@ async function handleEquipmentClick(equipmentId) {
   window.open('https://payberry.ru/pay/26/114#/', '_blank');
 }
 
-// Функция запроса данных с роутера
+// Функция запроса данных с роутера (НАПРЯМУЮ из браузера)
 async function fetchRouterData(docId) {
   routerContent.innerHTML = '<p>⏳ Загрузка данных с роутера...</p>';
   routerModal.classList.add('active');
   
   try {
-    const response = await fetch(`${WORKER_URL}/?router=${docId}`);
-    const data = await response.json();
+    // Получаем данные из Firestore
+    const docSnap = await getDoc(doc(db, 'subscriptions', docId));
     
-    if (data.error) {
+    if (!docSnap.exists()) {
+      routerContent.innerHTML = '<p style="color: var(--danger);">❌ Запись не найдена</p>';
+      return;
+    }
+    
+    const d = docSnap.data();
+    const domainName = d.domainName || '';
+    const routerUsername = d.routerUsername || '';
+    const routerPassword = d.routerPassword || '';
+    
+    if (!domainName || !routerUsername || !routerPassword) {
+      routerContent.innerHTML = '<p style="color: var(--danger);">❌ Не заполнены данные роутера</p>';
+      return;
+    }
+    
+    const cleanDomain = domainName.replace(/^https?:\/\//, '');
+    const auth = btoa(`${routerUsername}:${routerPassword}`);
+    const baseUrl = `https://${cleanDomain}`;
+    
+    const result = {};
+    const errors = {};
+    
+    // 1. Системная информация
+    try {
+      const resp = await fetch(`${baseUrl}/rci/show/system`, {
+        headers: { 'Authorization': `Basic ${auth}` }
+      });
+      if (resp.ok) result.system = await resp.json();
+      else errors.system = resp.status;
+    } catch (e) { errors.system = e.message; }
+    
+    // 2. Версия
+    try {
+      const resp = await fetch(`${baseUrl}/rci/show/version`, {
+        headers: { 'Authorization': `Basic ${auth}` }
+      });
+      if (resp.ok) result.version = await resp.json();
+      else errors.version = resp.status;
+    } catch (e) { errors.version = e.message; }
+    
+    // 3. Интернет
+    try {
+      const resp = await fetch(`${baseUrl}/rci/show/interface/GigabitEthernet1`, {
+        headers: { 'Authorization': `Basic ${auth}` }
+      });
+      if (resp.ok) result.wan = await resp.json();
+      else errors.wan = resp.status;
+    } catch (e) { errors.wan = e.message; }
+    
+    // 4. VPN
+    try {
+      const resp = await fetch(`${baseUrl}/rci/show/interface/PPTP1`, {
+        headers: { 'Authorization': `Basic ${auth}` }
+      });
+      if (resp.ok) result.vpn = await resp.json();
+      else errors.vpn = resp.status;
+    } catch (e) { errors.vpn = e.message; }
+    
+    // 5. Порты
+    try {
+      const resp = await fetch(`${baseUrl}/rci/show/interface`, {
+        headers: { 'Authorization': `Basic ${auth}` }
+      });
+      if (resp.ok) {
+        const ethData = await resp.json();
+        result.ports = {};
+        if (ethData['1']) result.ports.port1 = ethData['1'];
+        if (ethData['2']) result.ports.port2 = ethData['2'];
+        if (ethData['3']) result.ports.port3 = ethData['3'];
+      } else {
+        errors.ports = resp.status;
+      }
+    } catch (e) { errors.ports = e.message; }
+    
+    // Проверяем результат
+    if (Object.keys(result).length === 0) {
       routerContent.innerHTML = `
-        <p style="color: var(--danger);">❌ Ошибка: ${escapeHtml(data.error)}</p>
-        ${data.url ? `<p style="font-size: 0.9em; color: var(--muted);">URL: ${escapeHtml(data.url)}</p>` : ''}
+        <p style="color: var(--danger);">❌ Все запросы вернули ошибку</p>
+        <p style="font-size: 0.9em; color: var(--muted);">
+          ${Object.entries(errors).map(([k, v]) => `${k}: ${v}`).join('<br>')}
+        </p>
       `;
       return;
     }
     
-    displayRouterData(data);
+    displayRouterData(result);
     
   } catch (error) {
     routerContent.innerHTML = `
-      <p style="color: var(--danger);">❌ Ошибка соединения: ${escapeHtml(error.message)}</p>
+      <p style="color: var(--danger);">❌ Ошибка: ${escapeHtml(error.message)}</p>
     `;
   }
 }
