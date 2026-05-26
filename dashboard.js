@@ -209,7 +209,7 @@ async function fetchRouterData(docId) {
         displayRouterData(data);
         return;
       }
-    } catch (httpsError) {
+        } catch (httpsError) {
       console.log('HTTPS не сработал:', httpsError.message);
     }
     
@@ -244,7 +244,6 @@ async function fetchRouterData(docId) {
       routerContent.innerHTML = `
         <p style="color: var(--danger);">❌ Не удалось подключиться к роутеру</p>
         <p style="font-size: 0.9em; color: var(--muted);">
-          HTTPS: ${httpsError?.message || '—'}<br>
           HTTP: ${httpError.message}<br>
           Домен: ${cleanDomain}<br><br>
           <a href="https://${cleanDomain}/rci/show/interface" target="_blank" style="color: var(--primary);">
