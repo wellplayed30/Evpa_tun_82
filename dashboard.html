@@ -32,7 +32,7 @@
       color: var(--text);
     }
     header {
-      max-width: 1200px;
+      max-width: 100%;
       margin: 0 auto 30px;
       display: flex;
       justify-content: space-between;
@@ -42,7 +42,7 @@
     }
     h1 {
       font-weight: 600;
-      font-size: 2rem;
+      font-size: 1.6rem;
       letter-spacing: -0.5px;
       background: linear-gradient(135deg, #6366f1, #8b5cf6);
       -webkit-background-clip: text;
@@ -52,35 +52,26 @@
     .user-info {
       display: flex;
       align-items: center;
-      gap: 15px;
+      gap: 10px;
       flex-wrap: wrap;
     }
     .user-badge {
       background: rgba(255,255,255,0.9);
-      padding: 8px 16px;
-      border-radius: 12px;
-      font-size: 0.9rem;
+      padding: 6px 12px;
+      border-radius: 10px;
+      font-size: 0.85rem;
       font-weight: 500;
-      color: var(--text);
       box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-      display: flex;
-      align-items: center;
-      gap: 8px;
     }
     .btn-logout {
-      padding: 10px 20px;
+      padding: 8px 16px;
       border: 1px solid rgba(0,0,0,0.05);
-      border-radius: 12px;
+      border-radius: 10px;
       background: white;
       font-weight: 500;
-      color: var(--text);
+      font-size: 0.85rem;
       cursor: pointer;
-      transition: all 0.2s;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.03);
-    }
-    .btn-logout:hover {
-      background: #f8fafc;
-      box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+      white-space: nowrap;
     }
     .card {
       background: var(--card-bg);
@@ -88,147 +79,114 @@
       -webkit-backdrop-filter: blur(20px);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
-      padding: 28px 30px;
-      max-width: 1200px;
-      margin: 0 auto 30px;
+      padding: 20px;
+      max-width: 100%;
+      margin: 0 auto 20px;
     }
     .form-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 15px;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
       align-items: end;
-    }
-    .input-group {
-      position: relative;
     }
     .input-group input, .input-group select {
       width: 100%;
-      padding: 14px 16px;
-      font-size: 0.95rem;
+      padding: 12px 14px;
+      font-size: 0.9rem;
       background: var(--input-bg);
       border: 1.5px solid rgba(0,0,0,0.06);
-      border-radius: 14px;
+      border-radius: 12px;
       outline: none;
-      transition: all 0.25s;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.02);
     }
     .input-group input:focus, .input-group select:focus {
       border-color: var(--primary);
-      box-shadow: 0 0 0 4px rgba(99,102,241,0.15);
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
     }
     .input-group label {
       display: block;
-      margin-bottom: 6px;
-      font-size: 0.85rem;
+      margin-bottom: 4px;
+      font-size: 0.8rem;
       font-weight: 500;
       color: var(--muted);
-      letter-spacing: -0.2px;
     }
-    .password-wrapper {
-      position: relative;
-    }
-    .password-wrapper input {
-      padding-right: 40px;
-    }
+    .password-wrapper { position: relative; }
+    .password-wrapper input { padding-right: 36px; }
     .toggle-password {
       position: absolute;
-      right: 10px;
+      right: 8px;
       top: 50%;
       transform: translateY(-50%);
       background: none;
       border: none;
       cursor: pointer;
-      font-size: 1.2em;
-      padding: 4px;
+      font-size: 1.1em;
     }
     .btn-add, .btn-save {
       background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
       color: white;
       border: none;
-      padding: 14px 24px;
-      border-radius: 14px;
+      padding: 12px 20px;
+      border-radius: 12px;
       font-weight: 600;
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       cursor: pointer;
-      transition: all 0.25s;
-      box-shadow: 0 8px 20px rgba(99,102,241,0.3);
       white-space: nowrap;
-      height: fit-content;
-      align-self: end;
-    }
-    .btn-add:hover, .btn-save:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 12px 24px rgba(99,102,241,0.4);
     }
     .btn-cancel {
       background: white;
       color: var(--text);
       border: 1px solid rgba(0,0,0,0.05);
-      padding: 14px 24px;
-      border-radius: 14px;
+      padding: 12px 20px;
+      border-radius: 12px;
       font-weight: 500;
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       cursor: pointer;
-      transition: all 0.2s;
       white-space: nowrap;
-      height: fit-content;
-      align-self: end;
     }
-    .btn-cancel:hover {
-      background: #f1f5f9;
+    
+    /* ТАБЛИЦА БЕЗ СКРОЛЛА */
+    .table-wrapper {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      max-width: 100%;
     }
     .subscription-table {
       width: 100%;
-      border-collapse: separate;
-      border-spacing: 0;
-      margin-top: 10px;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      min-width: 600px;
     }
     .subscription-table th {
-      text-align: left;
-      padding: 14px 16px;
+      padding: 10px 8px;
       font-weight: 500;
-      font-size: 0.85rem;
+      font-size: 0.75rem;
       color: var(--muted);
       text-transform: uppercase;
-      letter-spacing: 0.5px;
-      border-bottom: 1px solid rgba(0,0,0,0.05);
+      letter-spacing: 0.3px;
+      border-bottom: 2px solid rgba(0,0,0,0.05);
+      white-space: nowrap;
     }
     .subscription-table td {
-      padding: 14px 16px;
-      font-size: 0.95rem;
+      padding: 10px 8px;
       border-bottom: 1px solid rgba(0,0,0,0.03);
-    }
-    .subscription-table tbody tr {
-      transition: background 0.2s;
-    }
-    .subscription-table tbody tr:hover {
-      background: rgba(99,102,241,0.04);
+      white-space: nowrap;
     }
     .subscription-table a {
       color: var(--primary);
       text-decoration: none;
       font-weight: 500;
-      transition: color 0.2s;
-    }
-    .subscription-table a:hover {
-      color: var(--primary-hover);
-      text-decoration: underline;
     }
     .action-btns {
       display: flex;
-      gap: 8px;
+      gap: 4px;
     }
     .btn-icon {
       background: none;
       border: none;
       cursor: pointer;
-      font-size: 1.2rem;
-      padding: 4px 8px;
-      border-radius: 8px;
-      transition: all 0.2s;
-    }
-    .btn-icon:hover {
-      background: rgba(0,0,0,0.05);
+      font-size: 1.1rem;
+      padding: 4px 6px;
+      border-radius: 6px;
     }
     .btn-edit { color: var(--primary); }
     .btn-delete { color: var(--danger); }
@@ -236,13 +194,14 @@
     .empty-message {
       text-align: center;
       color: var(--muted);
-      padding: 40px;
+      padding: 30px;
     }
     .created-by {
-      font-size: 0.8rem;
+      font-size: 0.75rem;
       color: var(--muted);
-      display: block;
     }
+    
+    /* Модальные окна */
     .modal-overlay {
       position: fixed;
       top: 0; left: 0;
@@ -258,28 +217,21 @@
     .modal {
       background: white;
       border-radius: var(--radius);
-      padding: 30px;
-      max-width: 500px;
-      width: 90%;
-      box-shadow: 0 40px 60px rgba(0,0,0,0.15);
+      padding: 20px;
+      max-width: 95vw;
+      width: 400px;
       max-height: 80vh;
       overflow-y: auto;
     }
-    .modal h3 { margin-bottom: 15px; }
-    .modal-btns { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
-    .router-data {
-      background: #f8fafc;
-      border-radius: 12px;
-      padding: 16px;
-      margin: 10px 0;
-      font-family: monospace;
-      font-size: 0.9rem;
-      white-space: pre-wrap;
-      word-break: break-all;
-    }
+    
     @media (max-width: 600px) {
-      .form-grid { grid-template-columns: 1fr; }
-      .subscription-table { font-size: 0.8rem; }
+      body { padding: 10px; }
+      h1 { font-size: 1.3rem; }
+      .form-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+      .card { padding: 15px; }
+      .subscription-table { font-size: 0.78rem; }
+      .subscription-table th, .subscription-table td { padding: 8px 4px; }
+      .modal { width: 95vw; padding: 15px; }
     }
   </style>
 </head>
