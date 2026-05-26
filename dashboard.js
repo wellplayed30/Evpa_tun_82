@@ -234,16 +234,23 @@ async function fetchRouterData(docId) {
 
 // Функция отображения данных роутера
 function displayRouterData(data) {
+  console.log('Данные от Worker:', JSON.stringify(data, null, 2));
+  
   let html = '<div style="color: var(--success); margin-bottom: 12px;">✅ Данные получены успешно</div>';
+  let foundAny = false;
 
+  // Версия прошивки
   if (data.version) {
+    foundAny = true;
     html += `
       <div style="background:#f0fdf4; border-radius:10px; padding:10px 14px; margin-bottom:10px; font-size:0.9rem;">
         <strong>📦 Версия:</strong> ${escapeHtml(data.version.title || '—')} — ${escapeHtml(data.version.model || '—')}
       </div>`;
   }
 
+  // Система
   if (data.system) {
+    foundAny = true;
     const s = data.system;
     const uptimeSec = parseInt(s.uptime) || 0;
     const d = Math.floor(uptimeSec / 86400);
@@ -257,7 +264,9 @@ function displayRouterData(data) {
       </div>`;
   }
 
+  // Интернет (WAN)
   if (data.wan) {
+    foundAny = true;
     const w = data.wan;
     const wanUptime = parseInt(w.uptime) || 0;
     const wd = Math.floor(wanUptime / 86400);
@@ -266,17 +275,19 @@ function displayRouterData(data) {
     
     html += `
       <div style="background:#eff6ff; border-radius:10px; padding:10px 14px; margin-bottom:10px; font-size:0.9rem;">
-        <div style="font-weight:600; margin-bottom:6px;">🌐 Интернет (${escapeHtml(w.description || 'ISP')})</div>
+        <div style="font-weight:600; margin-bottom:6px;">🌐 Интернет (${escapeHtml(w.description || w['interface-name'] || 'WAN')})</div>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
-          <span>🟢 Подключен</span>
+          <span>🟢 ${w.link === 'up' ? 'Подключен' : 'Отключен'}</span>
           <span>IP: <strong>${escapeHtml(w.address || '—')}</strong></span>
-          <span>Порт: ${w.port?.speed || '—'} Mbps ${w.port?.duplex || ''}</span>
+          <span>Маска: ${escapeHtml(w.mask || '—')}</span>
           <span>Время: ${wd} дн. ${wh} ч. ${wm} мин.</span>
         </div>
       </div>`;
   }
 
+  // VPN
   if (data.vpn) {
+    foundAny = true;
     const v = data.vpn;
     const vpnUptime = parseInt(v.uptime) || 0;
     const vd = Math.floor(vpnUptime / 86400);
@@ -285,14 +296,19 @@ function displayRouterData(data) {
     
     html += `
       <div style="background:#fef3c7; border-radius:10px; padding:10px 14px; margin-bottom:10px; font-size:0.9rem;">
-        <div style="font-weight:600; margin-bottom:6px;">🔒 VPN (${escapeHtml(v.description || 'PPTP')})</div>
+        <div style="font-weight:600; margin-bottom:6px;">🔒 VPN (${escapeHtml(v.description || v['interface-name'] || 'VPN')})</div>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
-          <span>🟢 Подключен</span>
+          <span>🟢 ${v.link === 'up' ? 'Подключен' : 'Отключен'}</span>
           <span>IP: <strong>${escapeHtml(v.address || '—')}</strong></span>
           <span>Сервер: ${escapeHtml(v['remote-endpoint-address'] || '—')}</span>
           <span>Время: ${vd} дн. ${vh} ч. ${vm} мин.</span>
         </div>
       </div>`;
+  }
+
+  if (!foundAny) {
+    html += `<p style="color: var(--muted);">Нет данных для отображения</p>`;
+    html += `<pre style="font-size:0.7rem; background:#f1f5f9; padding:10px; border-radius:8px; overflow:auto; max-height:200px;">${escapeHtml(JSON.stringify(data, null, 2))}</pre>`;
   }
 
   routerContent.innerHTML = html;
