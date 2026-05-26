@@ -176,61 +176,22 @@ async function fetchRouterData(docId) {
   routerModal.classList.add('active');
   
   try {
-    const docSnap = await getDoc(doc(db, 'subscriptions', docId));
+    const response = await fetch(`${WORKER_URL}/?router=${docId}`);
+    const data = await response.json();
     
-    if (!docSnap.exists()) {
-      routerContent.innerHTML = '<p style="color: var(--danger);">❌ Запись не найдена</p>';
-      return;
-    }
-    
-    const d = docSnap.data();
-    const domainName = d.domainName || '';
-    const routerUsername = d.routerUsername || '';
-    const routerPassword = d.routerPassword || '';
-    
-    if (!domainName || !routerUsername || !routerPassword) {
-      routerContent.innerHTML = '<p style="color: var(--danger);">❌ Не заполнены данные роутера</p>';
-      return;
-    }
-    
-    const cleanDomain = domainName.replace(/^https?:\/\//, '');
-    const auth = btoa(`${routerUsername}:${routerPassword}`);
-    
-    // Открываем API в новой вкладке
-    const apiUrl = `https://${cleanDomain}/rci/show/interface`;
-    const newWindow = window.open(apiUrl, '_blank');
-    
-    if (!newWindow) {
+    if (data.error) {
       routerContent.innerHTML = `
-        <p style="color: var(--warning);">⚠️ Браузер заблокировал всплывающее окно</p>
-        <p style="font-size: 0.9em; color: var(--muted);">
-          <a href="${apiUrl}" target="_blank" style="color: var(--primary);">
-            🔗 Нажмите здесь, чтобы открыть API роутера
-          </a>
-        </p>
+        <p style="color: var(--danger);">❌ Ошибка: ${escapeHtml(data.error)}</p>
+        ${data.url ? `<p style="font-size: 0.9em; color: var(--muted);">URL: ${escapeHtml(data.url)}</p>` : ''}
       `;
       return;
     }
     
-    // Ждём загрузки и получаем данные
-    setTimeout(() => {
-      try {
-        const routerData = JSON.parse(newWindow.document.body.textContent);
-        displayRouterData(routerData);
-        newWindow.close();
-      } catch (e) {
-        routerContent.innerHTML = `
-          <p style="color: var(--warning);">⚠️ Не удалось автоматически получить данные</p>
-          <p style="font-size: 0.9em; color: var(--muted);">
-            API роутера открыт в новой вкладке. Скопируйте данные оттуда.
-          </p>
-        `;
-      }
-    }, 2000);
+    displayRouterData(data);
     
   } catch (error) {
     routerContent.innerHTML = `
-      <p style="color: var(--danger);">❌ Ошибка: ${escapeHtml(error.message)}</p>
+      <p style="color: var(--danger);">❌ Ошибка соединения: ${escapeHtml(error.message)}</p>
     `;
   }
 }
@@ -307,78 +268,6 @@ function displayRouterData(data) {
   }
 
   html += '</table>';
-  routerContent.innerHTML = html;
-}  
-  // Порты
-  if (data['1']) {
-    const port1 = data['1'];
-    html += `<tr>
-      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">🔌 Порт 1</td>
-      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">${port1.link === 'up' ? '🟢 В сети' : '🔴 Отключен'}</td>
-      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">${port1.link === 'up' ? `Скорость: ${port1.speed} Mbps` : ''}</td>
-    </tr>`;
-  }
-  
-  if (data['2']) {
-    const port2 = data['2'];
-    html += `<tr>
-      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">🔌 Порт 2</td>
-      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">${port2.link === 'up' ? '🟢 В сети' : '🔴 Отключен'}</td>
-      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">${port2.link === 'up' ? `Скорость: ${port2.speed} Mbps` : ''}</td>
-    </tr>`;
-  }
-  
-  if (data['3']) {
-    const port3 = data['3'];
-    html += `<tr>
-      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">🔌 Порт 3</td>
-      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">${port3.link === 'up' ? '🟢 В сети' : '🔴 Отключен'}</td>
-      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">${port3.link === 'up' ? `Скорость: ${port3.speed} Mbps` : ''}</td>
-    </tr>`;
-  }
-  
-  // Интернет (ISP)
-  if (data['GigabitEthernet1']) {
-    const isp = data['GigabitEthernet1'];
-    html += `<tr>
-      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">🌐 Интернет (ISP)</td>
-      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">${isp.link === 'up' ? '🟢 Подключен' : '🔴 Нет связи'}</td>
-      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">${isp.link === 'up' ? `IP: ${isp.address || '—'}` : ''}</td>
-    </tr>`;
-  }
-  
-  // Wi-Fi 2.4 ГГц
-  if (data['WifiMaster0']) {
-    const wifi24 = data['WifiMaster0'];
-    html += `<tr>
-      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">📶 Wi-Fi 2.4 ГГц</td>
-      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">🟢 Включен</td>
-      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">Канал: ${wifi24.channel || '—'}, t°: ${wifi24.temperature || '—'}°C</td>
-    </tr>`;
-  }
-  
-  // Wi-Fi 5 ГГц
-  if (data['WifiMaster1']) {
-    const wifi5 = data['WifiMaster1'];
-    html += `<tr>
-      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">📶 Wi-Fi 5 ГГц</td>
-      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">🟢 Включен</td>
-      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">Канал: ${wifi5.channel || '—'}, t°: ${wifi5.temperature || '—'}°C</td>
-    </tr>`;
-  }
-  
-  // VPN
-  if (data['PPTP1']) {
-    const vpn = data['PPTP1'];
-    html += `<tr>
-      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">🔒 VPN (${vpn.description || 'PPTP'})</td>
-      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">${vpn.link === 'up' ? '🟢 Подключен' : '🔴 Отключен'}</td>
-      <td style="padding:8px; border-bottom:1px solid #e2e8f0;">${vpn.link === 'up' ? `IP: ${vpn.address || '—'}` : ''}</td>
-    </tr>`;
-  }
-  
-  html += '</table>';
-  
   routerContent.innerHTML = html;
 }
 
