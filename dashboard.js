@@ -184,17 +184,87 @@ async function fetchRouterData(docId) {
       routerContent.innerHTML = `
         <div style="color: var(--danger); padding: 20px;">
           <strong>❌ Ошибка:</strong> ${escapeHtml(data.error)}
-          ${data.details ? `<br><small>${escapeHtml(data.details)}</small>` : ''}
-          ${data.url ? `<br><small>URL: ${escapeHtml(data.url)}</small>` : ''}
         </div>
       `;
       return;
     }
     
-    routerContent.innerHTML = `
-      <div style="color: var(--success); margin-bottom: 10px;">✅ Данные получены успешно</div>
-      <div class="router-data">${escapeHtml(JSON.stringify(data, null, 2))}</div>
-    `;
+    // Формируем красивую таблицу
+    let html = '<div style="color: var(--success); margin-bottom: 15px;">✅ Данные получены успешно</div>';
+    html += '<table style="width:100%; border-collapse: collapse;">';
+    html += '<tr style="background:#f8fafc;"><th style="padding:10px; text-align:left; border-bottom:2px solid #e2e8f0;">Интерфейс</th><th style="padding:10px; text-align:left; border-bottom:2px solid #e2e8f0;">Статус</th><th style="padding:10px; text-align:left; border-bottom:2px solid #e2e8f0;">Детали</th></tr>';
+    
+    // Порты
+    if (data['1']) {
+      const port1 = data['1'];
+      html += `<tr>
+        <td style="padding:8px; border-bottom:1px solid #e2e8f0;">🔌 Порт 1</td>
+        <td style="padding:8px; border-bottom:1px solid #e2e8f0;">${port1.link === 'up' ? '🟢 В сети' : '🔴 Отключен'}</td>
+        <td style="padding:8px; border-bottom:1px solid #e2e8f0;">${port1.link === 'up' ? `Скорость: ${port1.speed} Mbps` : ''}</td>
+      </tr>`;
+    }
+    
+    if (data['2']) {
+      const port2 = data['2'];
+      html += `<tr>
+        <td style="padding:8px; border-bottom:1px solid #e2e8f0;">🔌 Порт 2</td>
+        <td style="padding:8px; border-bottom:1px solid #e2e8f0;">${port2.link === 'up' ? '🟢 В сети' : '🔴 Отключен'}</td>
+        <td style="padding:8px; border-bottom:1px solid #e2e8f0;">${port2.link === 'up' ? `Скорость: ${port2.speed} Mbps` : ''}</td>
+      </tr>`;
+    }
+    
+    if (data['3']) {
+      const port3 = data['3'];
+      html += `<tr>
+        <td style="padding:8px; border-bottom:1px solid #e2e8f0;">🔌 Порт 3</td>
+        <td style="padding:8px; border-bottom:1px solid #e2e8f0;">${port3.link === 'up' ? '🟢 В сети' : '🔴 Отключен'}</td>
+        <td style="padding:8px; border-bottom:1px solid #e2e8f0;">${port3.link === 'up' ? `Скорость: ${port3.speed} Mbps` : ''}</td>
+      </tr>`;
+    }
+    
+    // Интернет (ISP)
+    if (data['GigabitEthernet1']) {
+      const isp = data['GigabitEthernet1'];
+      html += `<tr>
+        <td style="padding:8px; border-bottom:1px solid #e2e8f0;">🌐 Интернет (ISP)</td>
+        <td style="padding:8px; border-bottom:1px solid #e2e8f0;">${isp.link === 'up' ? '🟢 Подключен' : '🔴 Нет связи'}</td>
+        <td style="padding:8px; border-bottom:1px solid #e2e8f0;">${isp.link === 'up' ? `IP: ${isp.address || '—'}` : ''}</td>
+      </tr>`;
+    }
+    
+    // Wi-Fi 2.4 ГГц
+    if (data['WifiMaster0']) {
+      const wifi24 = data['WifiMaster0'];
+      html += `<tr>
+        <td style="padding:8px; border-bottom:1px solid #e2e8f0;">📶 Wi-Fi 2.4 ГГц</td>
+        <td style="padding:8px; border-bottom:1px solid #e2e8f0;">🟢 Включен</td>
+        <td style="padding:8px; border-bottom:1px solid #e2e8f0;">Канал: ${wifi24.channel || '—'}, t°: ${wifi24.temperature || '—'}°C</td>
+      </tr>`;
+    }
+    
+    // Wi-Fi 5 ГГц
+    if (data['WifiMaster1']) {
+      const wifi5 = data['WifiMaster1'];
+      html += `<tr>
+        <td style="padding:8px; border-bottom:1px solid #e2e8f0;">📶 Wi-Fi 5 ГГц</td>
+        <td style="padding:8px; border-bottom:1px solid #e2e8f0;">🟢 Включен</td>
+        <td style="padding:8px; border-bottom:1px solid #e2e8f0;">Канал: ${wifi5.channel || '—'}, t°: ${wifi5.temperature || '—'}°C</td>
+      </tr>`;
+    }
+    
+    // VPN
+    if (data['PPTP1']) {
+      const vpn = data['PPTP1'];
+      html += `<tr>
+        <td style="padding:8px; border-bottom:1px solid #e2e8f0;">🔒 VPN (${vpn.description || 'PPTP'})</td>
+        <td style="padding:8px; border-bottom:1px solid #e2e8f0;">${vpn.link === 'up' ? '🟢 Подключен' : '🔴 Отключен'}</td>
+        <td style="padding:8px; border-bottom:1px solid #e2e8f0;">${vpn.link === 'up' ? `IP: ${vpn.address || '—'}` : ''}</td>
+      </tr>`;
+    }
+    
+    html += '</table>';
+    
+    routerContent.innerHTML = html;
     
   } catch (error) {
     routerContent.innerHTML = `
