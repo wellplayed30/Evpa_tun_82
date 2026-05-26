@@ -239,8 +239,76 @@ async function fetchRouterData(docId) {
 function displayRouterData(data) {
   let html = '<div style="color: var(--success); margin-bottom: 15px;">✅ Данные получены успешно</div>';
   html += '<table style="width:100%; border-collapse: collapse;">';
-  html += '<tr style="background:#f8fafc;"><th style="padding:10px; text-align:left; border-bottom:2px solid #e2e8f0;">Интерфейс</th><th style="padding:10px; text-align:left; border-bottom:2px solid #e2e8f0;">Статус</th><th style="padding:10px; text-align:left; border-bottom:2px solid #e2e8f0;">Детали</th></tr>';
-  
+  html += '<tr style="background:#f8fafc;"><th style="padding:10px; text-align:left; border-bottom:2px solid #e2e8f0;">Параметр</th><th style="padding:10px; text-align:left; border-bottom:2px solid #e2e8f0;">Значение</th></tr>';
+
+  // Версия прошивки
+  if (data.version && !data.version.error) {
+    html += `<tr><td style="padding:8px; border-bottom:1px solid #e2e8f0;">📦 Версия прошивки</td><td style="padding:8px; border-bottom:1px solid #e2e8f0;"><strong>${escapeHtml(data.version.title || '—')}</strong> (${escapeHtml(data.version.model || '—')})</td></tr>`;
+  }
+
+  // Система
+  if (data.system && !data.system.error) {
+    const s = data.system;
+    const uptimeSec = parseInt(s.uptime) || 0;
+    const d = Math.floor(uptimeSec / 86400);
+    const h = Math.floor((uptimeSec % 86400) / 3600);
+    const m = Math.floor((uptimeSec % 3600) / 60);
+    
+    html += `<tr><td style="padding:8px; border-bottom:1px solid #e2e8f0;">⏱️ Аптайм</td><td style="padding:8px; border-bottom:1px solid #e2e8f0;">${d} дн. ${h} ч. ${m} мин.</td></tr>`;
+    html += `<tr><td style="padding:8px; border-bottom:1px solid #e2e8f0;">🔥 Загрузка CPU</td><td style="padding:8px; border-bottom:1px solid #e2e8f0;">${s.cpuload || 0}%</td></tr>`;
+  }
+
+  // Интернет (WAN)
+  if (data.wan && !data.wan.error) {
+    const w = data.wan;
+    const wanUptime = parseInt(w.uptime) || 0;
+    const wd = Math.floor(wanUptime / 86400);
+    const wh = Math.floor((wanUptime % 86400) / 3600);
+    const wm = Math.floor((wanUptime % 3600) / 60);
+    
+    html += `<tr style="background:#f0fdf4;"><td colspan="2" style="padding:10px; font-weight:600;">🌐 Интернет (ISP)</td></tr>`;
+    html += `<tr><td style="padding:8px; border-bottom:1px solid #e2e8f0;">Статус</td><td style="padding:8px; border-bottom:1px solid #e2e8f0;">${w.link === 'up' ? '🟢 Подключен' : '🔴 Отключен'}</td></tr>`;
+    html += `<tr><td style="padding:8px; border-bottom:1px solid #e2e8f0;">IP-адрес</td><td style="padding:8px; border-bottom:1px solid #e2e8f0;"><strong>${escapeHtml(w.address || '—')}</strong></td></tr>`;
+    html += `<tr><td style="padding:8px; border-bottom:1px solid #e2e8f0;">Маска</td><td style="padding:8px; border-bottom:1px solid #e2e8f0;">${escapeHtml(w.mask || '—')}</td></tr>`;
+    html += `<tr><td style="padding:8px; border-bottom:1px solid #e2e8f0;">Скорость порта</td><td style="padding:8px; border-bottom:1px solid #e2e8f0;">${w.port?.speed || '—'} Mbps ${w.port?.duplex || ''}</td></tr>`;
+    html += `<tr><td style="padding:8px; border-bottom:1px solid #e2e8f0;">Время подключения</td><td style="padding:8px; border-bottom:1px solid #e2e8f0;">${wd} дн. ${wh} ч. ${wm} мин.</td></tr>`;
+  }
+
+  // Ethernet порты
+  if (data.ports && !data.ports.error) {
+    html += `<tr style="background:#eff6ff;"><td colspan="2" style="padding:10px; font-weight:600;">🔌 Ethernet порты</td></tr>`;
+    
+    ['port1', 'port2', 'port3'].forEach((portKey, i) => {
+      const port = data.ports[portKey];
+      if (port) {
+        html += `<tr>
+          <td style="padding:8px; border-bottom:1px solid #e2e8f0;">Порт ${i + 1}</td>
+          <td style="padding:8px; border-bottom:1px solid #e2e8f0;">
+            ${port.link === 'up' ? `🟢 Подключен (${port.speed} Mbps ${port.duplex})` : '🔴 Отключен'}
+          </td>
+        </tr>`;
+      }
+    });
+  }
+
+  // VPN
+  if (data.vpn && !data.vpn.error) {
+    const v = data.vpn;
+    const vpnUptime = parseInt(v.uptime) || 0;
+    const vd = Math.floor(vpnUptime / 86400);
+    const vh = Math.floor((vpnUptime % 86400) / 3600);
+    const vm = Math.floor((vpnUptime % 3600) / 60);
+    
+    html += `<tr style="background:#fef3c7;"><td colspan="2" style="padding:10px; font-weight:600;">🔒 VPN (${escapeHtml(v.description || 'PPTP')})</td></tr>`;
+    html += `<tr><td style="padding:8px; border-bottom:1px solid #e2e8f0;">Статус</td><td style="padding:8px; border-bottom:1px solid #e2e8f0;">${v.link === 'up' ? '🟢 Подключен' : '🔴 Отключен'}</td></tr>`;
+    html += `<tr><td style="padding:8px; border-bottom:1px solid #e2e8f0;">VPN IP</td><td style="padding:8px; border-bottom:1px solid #e2e8f0;"><strong>${escapeHtml(v.address || '—')}</strong></td></tr>`;
+    html += `<tr><td style="padding:8px; border-bottom:1px solid #e2e8f0;">Сервер</td><td style="padding:8px; border-bottom:1px solid #e2e8f0;">${escapeHtml(v['remote-endpoint-address'] || '—')}</td></tr>`;
+    html += `<tr><td style="padding:8px; border-bottom:1px solid #e2e8f0;">Время работы</td><td style="padding:8px; border-bottom:1px solid #e2e8f0;">${vd} дн. ${vh} ч. ${vm} мин.</td></tr>`;
+  }
+
+  html += '</table>';
+  routerContent.innerHTML = html;
+}  
   // Порты
   if (data['1']) {
     const port1 = data['1'];
