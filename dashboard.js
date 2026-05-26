@@ -5,6 +5,8 @@ import {
   query, where, onSnapshot, serverTimestamp 
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
+const WORKER_URL = 'https://router-bridge.babichevanya.workers.dev';
+
 let currentUser = null;
 let editingDocId = null;
 
@@ -174,88 +176,22 @@ async function fetchRouterData(docId) {
   routerModal.classList.add('active');
   
   try {
-    const docSnap = await getDoc(doc(db, 'subscriptions', docId));
+    const response = await fetch(`${WORKER_URL}/?router=${docId}`);
+    const data = await response.json();
     
-    if (!docSnap.exists()) {
-      routerContent.innerHTML = '<p style="color: var(--danger);">❌ Запись не найдена</p>';
-      return;
-    }
-    
-    const d = docSnap.data();
-    const domainName = d.domainName || '';
-    const routerUsername = d.routerUsername || '';
-    const routerPassword = d.routerPassword || '';
-    
-    if (!domainName || !routerUsername || !routerPassword) {
-      routerContent.innerHTML = '<p style="color: var(--danger);">❌ Не заполнены данные роутера</p>';
-      return;
-    }
-    
-    const cleanDomain = domainName.replace(/^https?:\/\//, '');
-    
-    // Пробуем HTTPS напрямую из браузера
-    const httpsUrl = `https://${cleanDomain}/rci/show/interface`;
-    
-    try {
-      const response = await fetch(httpsUrl, {
-        headers: {
-          'Authorization': 'Basic ' + btoa(`${routerUsername}:${routerPassword}`),
-          'Accept': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        displayRouterData(data);
-        return;
-      }
-        } catch (httpsError) {
-      console.log('HTTPS не сработал:', httpsError.message);
-    }
-    
-    // Пробуем HTTP
-    const httpUrl = `http://${cleanDomain}/rci/show/interface`;
-    
-    try {
-      const response = await fetch(httpUrl, {
-        headers: {
-          'Authorization': 'Basic ' + btoa(`${routerUsername}:${routerPassword}`),
-          'Accept': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        displayRouterData(data);
-        return;
-      } else {
-        routerContent.innerHTML = `
-          <p style="color: var(--danger);">❌ Ошибка роутера: ${response.status}</p>
-          <p style="font-size: 0.9em; color: var(--muted);">
-            Проверьте логин и пароль в настройках записи.
-            <br><br>
-            <a href="https://${cleanDomain}/rci/show/interface" target="_blank" style="color: var(--primary);">
-              🔗 Открыть API роутера напрямую
-            </a>
-          </p>
-        `;
-      }
-    } catch (httpError) {
+    if (data.error) {
       routerContent.innerHTML = `
-        <p style="color: var(--danger);">❌ Не удалось подключиться к роутеру</p>
-        <p style="font-size: 0.9em; color: var(--muted);">
-          HTTP: ${httpError.message}<br>
-          Домен: ${cleanDomain}<br><br>
-          <a href="https://${cleanDomain}/rci/show/interface" target="_blank" style="color: var(--primary);">
-            🔗 Открыть API роутера напрямую
-          </a>
-        </p>
+        <p style="color: var(--danger);">❌ Ошибка: ${escapeHtml(data.error)}</p>
+        ${data.url ? `<p style="font-size: 0.9em; color: var(--muted);">URL: ${escapeHtml(data.url)}</p>` : ''}
       `;
+      return;
     }
+    
+    displayRouterData(data);
     
   } catch (error) {
     routerContent.innerHTML = `
-      <p style="color: var(--danger);">❌ Ошибка: ${escapeHtml(error.message)}</p>
+      <p style="color: var(--danger);">❌ Ошибка соединения: ${escapeHtml(error.message)}</p>
     `;
   }
 }
