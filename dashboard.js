@@ -174,7 +174,6 @@ async function fetchRouterData(docId) {
   routerModal.classList.add('active');
   
   try {
-    // Получаем данные из Firestore
     const docSnap = await getDoc(doc(db, 'subscriptions', docId));
     
     if (!docSnap.exists()) {
@@ -193,76 +192,54 @@ async function fetchRouterData(docId) {
     }
     
     const cleanDomain = domainName.replace(/^https?:\/\//, '');
-    const auth = btoa(`${routerUsername}:${routerPassword}`);
-    const baseUrl = `https://${cleanDomain}`;
     
-    const result = {};
-    const errors = {};
+    // Формируем URL с авторизацией для открытия в новой вкладке
+    const apiUrl = `https://${routerUsername}:${encodeURIComponent(routerPassword)}@${cleanDomain}/rci/show/interface`;
     
-    // 1. Системная информация
-    try {
-      const resp = await fetch(`${baseUrl}/rci/show/system`, {
-        headers: { 'Authorization': `Basic ${auth}` }
-      });
-      if (resp.ok) result.system = await resp.json();
-      else errors.system = resp.status;
-    } catch (e) { errors.system = e.message; }
+    routerContent.innerHTML = `
+      <p style="color: var(--warning); font-size: 1.1em;">📡 Открываем API роутера...</p>
+      <p style="font-size: 0.9em; color: var(--muted);">
+        Если данные не загрузились автоматически, нажмите кнопку ниже.
+      </p>
+      <div style="margin-top: 15px;">
+        <a href="${apiUrl}" target="_blank" style="display: inline-block; padding: 12px 24px; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; text-decoration: none; border-radius: 12px; font-weight: 600;">
+          🔗 Открыть API роутера
+        </a>
+      </div>
+      <p style="margin-top: 15px; font-size: 0.85em; color: var(--muted);">
+        После открытия скопируйте JSON-данные и вставьте ниже.
+      </p>
+      <textarea id="manualJsonInput" placeholder="Вставьте JSON сюда..." style="width:100%; height:150px; margin-top:10px; padding:10px; border:1px solid #ddd; border-radius:8px; font-size:0.85em;"></textarea>
+      <button id="parseJsonBtn" style="margin-top:10px; padding:10px 20px; background: var(--primary); color:white; border:none; border-radius:8px; cursor:pointer;">📊 Показать данные</button>
+    `;
     
-    // 2. Версия
-    try {
-      const resp = await fetch(`${baseUrl}/rci/show/version`, {
-        headers: { 'Authorization': `Basic ${auth}` }
-      });
-      if (resp.ok) result.version = await resp.json();
-      else errors.version = resp.status;
-    } catch (e) { errors.version = e.message; }
-    
-    // 3. Интернет
-    try {
-      const resp = await fetch(`${baseUrl}/rci/show/interface/GigabitEthernet1`, {
-        headers: { 'Authorization': `Basic ${auth}` }
-      });
-      if (resp.ok) result.wan = await resp.json();
-      else errors.wan = resp.status;
-    } catch (e) { errors.wan = e.message; }
-    
-    // 4. VPN
-    try {
-      const resp = await fetch(`${baseUrl}/rci/show/interface/PPTP1`, {
-        headers: { 'Authorization': `Basic ${auth}` }
-      });
-      if (resp.ok) result.vpn = await resp.json();
-      else errors.vpn = resp.status;
-    } catch (e) { errors.vpn = e.message; }
-    
-    // 5. Порты
-    try {
-      const resp = await fetch(`${baseUrl}/rci/show/interface`, {
-        headers: { 'Authorization': `Basic ${auth}` }
-      });
-      if (resp.ok) {
-        const ethData = await resp.json();
+    // Обработчик для ручного ввода JSON
+    document.getElementById('parseJsonBtn').addEventListener('click', () => {
+      try {
+        const jsonText = document.getElementById('manualJsonInput').value;
+        const data = JSON.parse(jsonText);
+        
+        // Извлекаем нужные данные
+        const result = {};
+        
+        // Ищем интерфейсы
+        if (data.GigabitEthernet1) result.wan = data.GigabitEthernet1;
+        if (data.PPTP1) result.vpn = data.PPTP1;
+        
+        // Порты
         result.ports = {};
-        if (ethData['1']) result.ports.port1 = ethData['1'];
-        if (ethData['2']) result.ports.port2 = ethData['2'];
-        if (ethData['3']) result.ports.port3 = ethData['3'];
-      } else {
-        errors.ports = resp.status;
+        if (data['1']) result.ports.port1 = data['1'];
+        if (data['2']) result.ports.port2 = data['2'];
+        if (data['3']) result.ports.port3 = data['3'];
+        
+        displayRouterData(result);
+      } catch (e) {
+        alert('Ошибка парсинга JSON: ' + e.message);
       }
-    } catch (e) { errors.ports = e.message; }
+    });
     
-    // Проверяем результат
-    if (Object.keys(result).length === 0) {
-      routerContent.innerHTML = `
-        <p style="color: var(--danger);">❌ Все запросы вернули ошибку</p>
-        <p style="font-size: 0.9em; color: var(--muted);">
-          ${Object.entries(errors).map(([k, v]) => `${k}: ${v}`).join('<br>')}
-        </p>
-      `;
-      return;
-    }
-    
-    displayRouterData(result);
+    // Пробуем автоматически открыть
+    window.open(apiUrl, '_blank');
     
   } catch (error) {
     routerContent.innerHTML = `
