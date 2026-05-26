@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Управление подписками</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; }
+    input, select, button { margin: 5px; padding: 8px; font-size: 14px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background: #f2f2f2; }
+    .logout { float: right; }
+  </style>
+</head>
+<body>
+  <button class="logout" id="logoutBtn">Выйти</button>
+  <h1>Мои подписки</h1>
+
+  <div>
+    <h2>Добавить запись</h2>
+    <input type="text" id="address" placeholder="Адрес">
+    <input type="date" id="connectionDate">
+    <input type="text" id="equipmentId" placeholder="ID оборудования">
+    <select id="duration">
+      <option value="1">1 месяц</option>
+      <option value="3">3 месяца</option>
+      <option value="6">6 месяцев</option>
+      <option value="12">12 месяцев</option>
+    </select>
+    <input type="text" id="domainName" placeholder="Доменное имя">
+    <input type="number" id="cost" placeholder="Стоимость" step="0.01">
+    <button id="addBtn">Добавить</button>
+  </div>
+
+  <h2>Список</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Адрес</th>
+        <th>Дата подключения</th>
+        <th>ID оборудования</th>
+        <th>Срок (мес.)</th>
+        <th>Домен</th>
+        <th>Стоимость</th>
+        <th>Окончание</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+
+  <script type="module" src="dashboard.js"></script>
+</body>
+</html>
