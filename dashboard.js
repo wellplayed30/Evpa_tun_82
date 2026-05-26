@@ -187,14 +187,8 @@ async function fetchRouterData(docId) {
       return;
     }
     
-    // Извлекаем данные из ответа
-    const result = {};
-    if (data.GigabitEthernet1) result.wan = data.GigabitEthernet1;
-    if (data.PPTP1) result.vpn = data.PPTP1;
-    if (data.version) result.version = data.version;
-    if (data.system) result.system = data.system;
-    
-    displayRouterData(result);
+    // Передаём ВСЕ данные напрямую в displayRouterData
+    displayRouterData(data);
     
   } catch (error) {
     routerContent.innerHTML = `
