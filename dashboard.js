@@ -18,6 +18,7 @@ const formTitle = document.getElementById('formTitle');
 
 // Поля формы
 const addressField = document.getElementById('address');
+const categoryField = document.getElementById('category');
 const connectionDateField = document.getElementById('connectionDate');
 const equipmentIdField = document.getElementById('equipmentId');
 const durationField = document.getElementById('duration');
@@ -25,6 +26,9 @@ const domainNameField = document.getElementById('domainName');
 const costField = document.getElementById('cost');
 const routerUsernameField = document.getElementById('routerUsername');
 const routerPasswordField = document.getElementById('routerPassword');
+
+// Группы полей для скрытия
+const clientOnlyFields = document.querySelectorAll('.client-only');
 
 // Модальное окно удаления
 const deleteModal = document.getElementById('deleteModal');
@@ -36,6 +40,12 @@ let docToDelete = null;
 const routerModal = document.getElementById('routerModal');
 const routerContent = document.getElementById('routerContent');
 const closeRouterModal = document.getElementById('closeRouterModal');
+
+// Переключение видимости полей при смене категории
+categoryField.addEventListener('change', () => {
+  const isClient = categoryField.value === 'clients';
+  clientOnlyFields.forEach(el => el.style.display = isClient ? '' : 'none');
+});
 
 // Авторизация
 onAuthStateChanged(auth, user => {
@@ -59,20 +69,29 @@ document.getElementById('togglePassword').addEventListener('click', () => {
 // Добавление записи
 addBtn.addEventListener('click', async () => {
   if (!currentUser) return;
+  
+  const category = categoryField.value;
+  
   const data = {
     userId: currentUser.uid,
     userEmail: currentUser.email,
+    category: category,
     address: addressField.value,
-    connectionDate: new Date(connectionDateField.value),
     equipmentId: equipmentIdField.value,
-    subscriptionDuration: parseInt(durationField.value),
     domainName: domainNameField.value,
-    cost: parseFloat(costField.value),
     routerUsername: routerUsernameField.value,
     routerPassword: routerPasswordField.value,
     notifiedThreeDays: false,
     createdAt: serverTimestamp()
   };
+  
+  // Добавляем поля только для клиентов
+  if (category === 'clients') {
+    data.connectionDate = new Date(connectionDateField.value);
+    data.subscriptionDuration = parseInt(durationField.value);
+    data.cost = parseFloat(costField.value);
+  }
+  
   try {
     await addDoc(collection(db, 'subscriptions'), data);
     clearForm();
@@ -84,19 +103,33 @@ addBtn.addEventListener('click', async () => {
 // Сохранение изменений
 saveBtn.addEventListener('click', async () => {
   if (!editingDocId) return;
+  
+  const category = categoryField.value;
+  
+  const updateData = {
+    category: category,
+    address: addressField.value,
+    equipmentId: equipmentIdField.value,
+    domainName: domainNameField.value,
+    routerUsername: routerUsernameField.value,
+    routerPassword: routerPasswordField.value,
+    notifiedThreeDays: false
+  };
+  
+  // Обновляем поля только для клиентов
+  if (category === 'clients') {
+    updateData.connectionDate = new Date(connectionDateField.value);
+    updateData.subscriptionDuration = parseInt(durationField.value);
+    updateData.cost = parseFloat(costField.value);
+  } else {
+    updateData.connectionDate = null;
+    updateData.subscriptionDuration = null;
+    updateData.cost = null;
+  }
+  
   try {
     const docRef = doc(db, 'subscriptions', editingDocId);
-    await updateDoc(docRef, {
-      address: addressField.value,
-      connectionDate: new Date(connectionDateField.value),
-      equipmentId: equipmentIdField.value,
-      subscriptionDuration: parseInt(durationField.value),
-      domainName: domainNameField.value,
-      cost: parseFloat(costField.value),
-      routerUsername: routerUsernameField.value,
-      routerPassword: routerPasswordField.value,
-      notifiedThreeDays: false
-    });
+    await updateDoc(docRef, updateData);
     cancelEdit();
   } catch (e) {
     alert('Ошибка обновления: ' + e.message);
@@ -113,10 +146,12 @@ function cancelEdit() {
   saveBtn.style.display = 'none';
   cancelBtn.style.display = 'none';
   formTitle.textContent = 'Добавить новую подписку';
+  clientOnlyFields.forEach(el => el.style.display = '');
 }
 
 function clearForm() {
   addressField.value = '';
+  categoryField.value = 'clients';
   connectionDateField.value = '';
   equipmentIdField.value = '';
   durationField.value = '1';
@@ -124,6 +159,7 @@ function clearForm() {
   costField.value = '';
   routerUsernameField.value = '';
   routerPasswordField.value = '';
+  clientOnlyFields.forEach(el => el.style.display = '');
 }
 
 // Модальное окно удаления
@@ -170,7 +206,7 @@ async function handleEquipmentClick(equipmentId) {
   window.open('https://payberry.ru/pay/26/114#/', '_blank');
 }
 
-// Функция запроса данных с роутера (через Worker)
+// Функция запроса данных с роутера
 async function fetchRouterData(docId) {
   routerContent.innerHTML = '<p>⏳ Загрузка данных с роутера...</p>';
   routerModal.classList.add('active');
@@ -187,7 +223,6 @@ async function fetchRouterData(docId) {
       return;
     }
     
-    // Передаём ВСЕ данные напрямую в displayRouterData
     displayRouterData(data);
     
   } catch (error) {
@@ -201,7 +236,6 @@ async function fetchRouterData(docId) {
 function displayRouterData(data) {
   let html = '<div style="color: var(--success); margin-bottom: 12px;">✅ Данные получены успешно</div>';
 
-  // Версия прошивки
   if (data.version) {
     html += `
       <div style="background:#f0fdf4; border-radius:10px; padding:10px 14px; margin-bottom:10px; font-size:0.9rem;">
@@ -209,7 +243,6 @@ function displayRouterData(data) {
       </div>`;
   }
 
-  // Система
   if (data.system) {
     const s = data.system;
     const uptimeSec = parseInt(s.uptime) || 0;
@@ -224,7 +257,6 @@ function displayRouterData(data) {
       </div>`;
   }
 
-  // Интернет (WAN)
   if (data.wan) {
     const w = data.wan;
     const wanUptime = parseInt(w.uptime) || 0;
@@ -244,7 +276,6 @@ function displayRouterData(data) {
       </div>`;
   }
 
-  // VPN
   if (data.vpn) {
     const v = data.vpn;
     const vpnUptime = parseInt(v.uptime) || 0;
@@ -264,89 +295,138 @@ function displayRouterData(data) {
       </div>`;
   }
 
-  if (!data.version && !data.system && !data.wan && !data.vpn) {
-    html += '<p style="color: var(--muted);">Нет данных для отображения</p>';
-  }
-
   routerContent.innerHTML = html;
 }
-// Загрузка и отображение таблицы
+
+// Загрузка и отображение таблицы с группировкой
 function loadSubscriptions() {
   const q = query(collection(db, 'subscriptions'), where('userId', '==', currentUser.uid));
   onSnapshot(q, snapshot => {
     const tbody = document.getElementById('tableBody');
     tbody.innerHTML = '';
+    
     if (snapshot.empty) {
       tbody.innerHTML = '<tr><td colspan="10" class="empty-message">Нет добавленных подписок</td></tr>';
       return;
     }
+    
+    // Группируем записи
+    const groups = {
+      personal: { title: '👤 Личные', items: [] },
+      work: { title: '💼 Рабочие', items: [] },
+      clients: { title: '👥 Клиенты', items: [] }
+    };
+    
     snapshot.forEach(docSnap => {
       const d = docSnap.data();
-      const endDate = new Date(d.connectionDate.toDate());
-      endDate.setMonth(endDate.getMonth() + d.subscriptionDuration);
-
-      let domainLink = d.domainName;
-      if (d.domainName && !d.domainName.startsWith('http')) {
-        domainLink = 'http://' + d.domainName;
+      const category = d.category || 'clients';
+      if (groups[category]) {
+        groups[category].items.push({ id: docSnap.id, ...d });
       }
-
-      const row = document.createElement('tr');
-      row.innerHTML = `
-        <td>${escapeHtml(d.address)}</td>
-        <td>${d.connectionDate.toDate().toLocaleDateString()}</td>
-        <td><a href="#" class="payberry-link" data-id="${escapeHtml(d.equipmentId)}" title="Скопировать ID и открыть Payberry">${escapeHtml(d.equipmentId)}</a></td>
-        <td>${d.subscriptionDuration} мес.</td>
-        <td>${d.domainName ? `<a href="${domainLink}" target="_blank">${escapeHtml(d.domainName)}</a>` : '—'}</td>
-        <td>${d.cost ? d.cost.toLocaleString('ru-RU') + ' ₽' : '—'}</td>
-        <td>${endDate.toLocaleDateString()}</td>
-        <td>
-          ${d.routerUsername ? `<span class="created-by">🔑 ${escapeHtml(d.routerUsername)}</span>` : '—'}
-          ${d.routerPassword ? '<span class="created-by">🔒 ••••••••</span>' : ''}
-        </td>
-        <td><span class="created-by">${escapeHtml(d.userEmail || '—')}</span></td>
-        <td>
-          <div class="action-btns">
-            ${d.domainName && d.routerUsername && d.routerPassword ? 
-              `<button class="btn-icon btn-router" data-id="${docSnap.id}" title="Данные роутера">📡</button>` : ''}
-            <button class="btn-icon btn-edit" data-id="${docSnap.id}" title="Редактировать">✏️</button>
-            <button class="btn-icon btn-delete" data-id="${docSnap.id}" title="Удалить">🗑️</button>
-          </div>
-        </td>
-      `;
-      tbody.appendChild(row);
     });
-
-    // Обработчики для Payberry-ссылок
-    document.querySelectorAll('.payberry-link').forEach(link => {
-      link.addEventListener('click', (e) => {
-        e.preventDefault();
-        const equipmentId = e.target.closest('a').dataset.id;
-        handleEquipmentClick(equipmentId);
+    
+    // Отрисовываем группы
+    Object.values(groups).forEach(group => {
+      if (group.items.length === 0) return;
+      
+      // Заголовок группы
+      const groupRow = document.createElement('tr');
+      groupRow.innerHTML = `
+        <td colspan="10" style="background:#f1f5f9; padding:10px 14px; font-weight:600; font-size:0.95rem; border-bottom:2px solid #e2e8f0;">
+          ${group.title} (${group.items.length})
+        </td>`;
+      tbody.appendChild(groupRow);
+      
+      // Записи группы
+      group.items.forEach(d => {
+        const endDate = d.connectionDate ? new Date(d.connectionDate.toDate()) : null;
+        if (endDate) endDate.setMonth(endDate.getMonth() + (d.subscriptionDuration || 0));
+        
+        let domainLink = d.domainName;
+        if (d.domainName && !d.domainName.startsWith('http')) {
+          domainLink = 'http://' + d.domainName;
+        }
+        
+        const row = document.createElement('tr');
+        
+        if (d.category === 'clients') {
+          // Полная строка для клиентов
+          row.innerHTML = `
+            <td>${escapeHtml(d.address)}</td>
+            <td>${d.connectionDate ? d.connectionDate.toDate().toLocaleDateString() : '—'}</td>
+            <td><a href="#" class="payberry-link" data-id="${escapeHtml(d.equipmentId)}">${escapeHtml(d.equipmentId)}</a></td>
+            <td>${d.subscriptionDuration || '—'} мес.</td>
+            <td>${d.domainName ? `<a href="${domainLink}" target="_blank">${escapeHtml(d.domainName)}</a>` : '—'}</td>
+            <td>${d.cost ? d.cost.toLocaleString('ru-RU') + ' ₽' : '—'}</td>
+            <td>${endDate ? endDate.toLocaleDateString() : '—'}</td>
+            <td>
+              ${d.routerUsername ? `<span class="created-by">🔑 ${escapeHtml(d.routerUsername)}</span>` : '—'}
+            </td>
+            <td><span class="created-by">${escapeHtml(d.userEmail || '—')}</span></td>
+            <td>
+              <div class="action-btns">
+                ${d.domainName && d.routerUsername && d.routerPassword ? 
+                  `<button class="btn-icon btn-router" data-id="${d.id}">📡</button>` : ''}
+                <button class="btn-icon btn-edit" data-id="${d.id}">✏️</button>
+                <button class="btn-icon btn-delete" data-id="${d.id}">🗑️</button>
+              </div>
+            </td>`;
+        } else {
+          // Упрощённая строка для личных и рабочих
+          row.innerHTML = `
+            <td>${escapeHtml(d.address)}</td>
+            <td>—</td>
+            <td><a href="#" class="payberry-link" data-id="${escapeHtml(d.equipmentId)}">${escapeHtml(d.equipmentId)}</a></td>
+            <td>—</td>
+            <td>${d.domainName ? `<a href="${domainLink}" target="_blank">${escapeHtml(d.domainName)}</a>` : '—'}</td>
+            <td>—</td>
+            <td>—</td>
+            <td>
+              ${d.routerUsername ? `<span class="created-by">🔑 ${escapeHtml(d.routerUsername)}</span>` : '—'}
+            </td>
+            <td><span class="created-by">${escapeHtml(d.userEmail || '—')}</span></td>
+            <td>
+              <div class="action-btns">
+                ${d.domainName && d.routerUsername && d.routerPassword ? 
+                  `<button class="btn-icon btn-router" data-id="${d.id}">📡</button>` : ''}
+                <button class="btn-icon btn-edit" data-id="${d.id}">✏️</button>
+                <button class="btn-icon btn-delete" data-id="${d.id}">🗑️</button>
+              </div>
+            </td>`;
+        }
+        
+        tbody.appendChild(row);
       });
     });
+    
+    // Навешиваем обработчики
+    attachEventHandlers();
+  });
+}
 
-    // Обработчики для кнопок роутера
-    document.querySelectorAll('.btn-router').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const docId = e.target.closest('button').dataset.id;
-        fetchRouterData(docId);
-      });
+function attachEventHandlers() {
+  document.querySelectorAll('.payberry-link').forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      handleEquipmentClick(e.target.closest('a').dataset.id);
     });
+  });
 
-    // Обработчики для кнопок редактирования
-    document.querySelectorAll('.btn-edit').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const docId = e.target.closest('button').dataset.id;
-        startEdit(docId);
-      });
+  document.querySelectorAll('.btn-router').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      fetchRouterData(e.target.closest('button').dataset.id);
     });
+  });
 
-    // Обработчики для кнопок удаления
-    document.querySelectorAll('.btn-delete').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const docId = e.target.closest('button').dataset.id;
-        openDeleteModal(docId);
-      });
+  document.querySelectorAll('.btn-edit').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      startEdit(e.target.closest('button').dataset.id);
+    });
+  });
+
+  document.querySelectorAll('.btn-delete').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      openDeleteModal(e.target.closest('button').dataset.id);
     });
   });
 }
@@ -358,14 +438,23 @@ function startEdit(docId) {
       if (docSnap.id === docId) {
         const d = docSnap.data();
         editingDocId = docId;
+        
+        categoryField.value = d.category || 'clients';
         addressField.value = d.address || '';
-        connectionDateField.value = d.connectionDate.toDate().toISOString().split('T')[0];
         equipmentIdField.value = d.equipmentId || '';
-        durationField.value = d.subscriptionDuration || 1;
         domainNameField.value = d.domainName || '';
-        costField.value = d.cost || '';
         routerUsernameField.value = d.routerUsername || '';
         routerPasswordField.value = d.routerPassword || '';
+        
+        if (d.connectionDate) {
+          connectionDateField.value = d.connectionDate.toDate().toISOString().split('T')[0];
+        }
+        durationField.value = d.subscriptionDuration || 1;
+        costField.value = d.cost || '';
+        
+        // Показываем/скрываем поля клиентов
+        const isClient = d.category === 'clients';
+        clientOnlyFields.forEach(el => el.style.display = isClient ? '' : 'none');
         
         addBtn.style.display = 'none';
         saveBtn.style.display = 'inline-block';
